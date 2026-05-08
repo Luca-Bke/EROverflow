@@ -1,0 +1,16 @@
+{
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#202020",
+        "titleBar.activeBackground": "#2D2D2D",
+        "titleBar.activeForeground": "#FBFBFB",
+        "titleBar.inactiveBackground": "#202020",
+        "titleBar.inactiveForeground": "#FBFBFB",
+        "statusBar.background": "#202020",
+        "statusBar.foreground": "#FBFBFB",
+        "statusBar.debuggingBackground": "#202020",
+        "statusBar.debuggingForeground": "#FBFBFB",
+        "statusBar.noFolderBackground": "#202020",
+        "statusBar.noFolderForeground": "#FBFBFB"
+    },
+    "python.terminal.useEnvFile": true
+}
