@@ -1,1 +1,4 @@
 langgraph>=1.1.10
+langchain>=0.3.0
+langchain-openai>=0.3.0
+langsmith>=0.1.0
