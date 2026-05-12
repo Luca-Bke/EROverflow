@@ -2,7 +2,7 @@
 
 import os
 import uuid
-from typing import Annotated
+from typing import Annotated, Optional
 from typing_extensions import TypedDict
 
 # Configure LangSmith for tracing and monitoring
@@ -11,13 +11,13 @@ os.environ.setdefault("LANGSMITH_TRACING", "true")
 from langgraph.graph import StateGraph, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.graph.message import add_messages
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langsmith import trace, Client
 
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
-
 
 def _create_llm() -> ChatOpenAI:
     """Create ChatOpenAI instance configured for OpenRouter."""
@@ -42,7 +42,9 @@ def _create_llm() -> ChatOpenAI:
 def chatbot(state: State) -> State:
     """Chatbot node: uses OpenRouter LLM to generate responses."""
     llm = _create_llm()
-    response = llm.invoke(state["messages"])
+    llm_messages = state["messages"]
+    llm_messages.append(SystemMessage(content="You are a Nurse in an Emergency Room in an Hospital. You will be presented with several patients showing symptoms. You must triage them according to the Manchester Code. "))
+    response = llm.invoke(llm_messages)
     return {"messages": [response]}
 
 
@@ -59,7 +61,7 @@ def run_chat():
     app = build_graph()
     messages = []
     session_id = str(uuid.uuid4())[:8]
-    
+
     print("🤖 Chat with EROverflow Agent")
     print("Type 'exit' or 'quit' to end the conversation.\n")
     print(f"📊 Session ID: {session_id} (visible in LangSmith)\n")
@@ -71,6 +73,7 @@ def run_chat():
         tags=["chat", "interactive"],
     ) as session_trace:
         while True:
+            messages = []
             # Get user input
             user_input = input("You: ").strip()
             
@@ -101,12 +104,13 @@ def run_chat():
                         agent_message = result["messages"][-1]
                         agent_content = agent_message.content if hasattr(agent_message, 'content') else str(agent_message)
                         print(f"\nAgent: {agent_content}\n")
-                        
+
                         # Add agent response to history
                         messages.append({"role": "assistant", "content": agent_content})
                         
                         # Log the outputs to the trace
-                        query_trace.outputs = {"agent_response": agent_content}
+                        query_trace.outputs = {
+                            "agent_response": agent_content}
             except Exception as e:
                 print(f"Error: {e}\n")
 
