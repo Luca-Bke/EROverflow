@@ -1,6 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm
 
-RUN adduser agent
+# RUN adduser agent
+RUN useradd -m -u 1000 -s /sbin/nologin agent
 USER agent
 WORKDIR /home/agent
 
