@@ -3,7 +3,7 @@ import pytest
 import httpx
 from uuid import uuid4
 
-from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
+from a2a.client import A2ACardResolver, Client, ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, TextPart
 
 
@@ -143,7 +143,7 @@ async def send_text_message(text: str, url: str, context_id: str | None = None, 
         agent_card = await resolver.get_agent_card()
         config = ClientConfig(httpx_client=httpx_client, streaming=streaming)
         factory = ClientFactory(config)
-        client = factory.create(agent_card)
+        client: Client = factory.create(agent_card)
 
         msg = Message(
             kind="message",
