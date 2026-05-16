@@ -66,11 +66,11 @@ uv sync --extra test
 
 # Run tests against your running agent URL
 uv run pytest --agent-url http://localhost:9009
+
+# Run custom test with print output
+uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom/custom_test.py
+uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom/test_openrouter_nst.py
 ```
-
-Run custom test with print output
-
-   uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom_test.py
 
 ## Publishing
 
