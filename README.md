@@ -68,6 +68,10 @@ uv sync --extra test
 uv run pytest --agent-url http://localhost:9009
 ```
 
+Run custom test with print output
+
+   uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom_test.py
+
 ## Publishing
 
 The repository includes a GitHub Actions workflow that automatically builds, tests, and publishes a Docker image of your agent to GitHub Container Registry.
