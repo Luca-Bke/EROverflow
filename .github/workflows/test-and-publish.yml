@@ -46,11 +46,14 @@ jobs:
           load: true
           platforms: linux/amd64
 
-      - name: Start agent container
+      - name: Make secrets available as environment variables
         env:
             SECRETS_JSON: ${{ toJson(secrets) }}
         run: |
           echo "$SECRETS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' > .env
+
+      - name: Start agent container
+        run: |
           docker run -d -p 9009:9009 --name agent-container --env-file .env $(echo "${{ steps.meta.outputs.tags }}" | head -n1) --host 0.0.0.0 --port 9009
           timeout 30 bash -c 'docker logs agent-container'
           timeout 30 bash -c 'until curl -sf http://localhost:9009/.well-known/agent-card.json > /dev/null; do sleep 1; done'
