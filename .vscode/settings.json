@@ -1,8 +1,0 @@
-{
-    "workbench.colorCustomizations": {
-        "statusBar.noFolderBackground": "#202020",
-        "statusBar.noFolderForeground": "#FBFBFB"
-    },
-    "python.terminal.useEnvFile": true,
-    "git.allowForcePush": true
-}
