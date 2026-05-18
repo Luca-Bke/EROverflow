@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - personal/luca
     tags:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0
 
@@ -50,8 +51,7 @@ jobs:
         run: |
           echo "$SECRETS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' > .env
           docker run -d -p 9009:9009 --name agent-container --env-file .env $(echo "${{ steps.meta.outputs.tags }}" | head -n1) --host 0.0.0.0 --port 9009
-          docker logs agent-container
-          timeout 60 bash -c 'until curl -sf http://0.0.0.0:9009/.well-known/agent-card.json > /dev/null; do sleep 1; done'
+          timeout 30 bash -c 'until curl -sf http://localhost:9009/.well-known/agent-card.json > /dev/null; do sleep 1; done'
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v4
