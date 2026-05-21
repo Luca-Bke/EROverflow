@@ -24,16 +24,16 @@ def main():
     # See: https://a2a-protocol.org/latest/tutorials/python/3-agent-skills-and-card/
 
     skill = AgentSkill(
-        id="",
-        name="",
-        description="",
-        tags=[],
-        examples=[]
+        id="terminal-bench-shell",
+        name="Terminal Bench Shell",
+        description="Solves command-line tasks via the terminal-bench-shell-v1 protocol",
+        tags=["terminal", "shell", "cli"],
+        examples=["Fix the failing tests in this repo", "Install dependencies and run the build"]
     )
 
     agent_card = AgentCard(
-        name="",
-        description="",
+        name="EROverflow Terminal Agent",
+        description="A2A purple agent for Terminal Bench 2.0 — solves hard, realistic command-line tasks",
         url=args.card_url or f"http://{args.host}:{args.port}/",
         version='1.0.0',
         default_input_modes=['text'],
