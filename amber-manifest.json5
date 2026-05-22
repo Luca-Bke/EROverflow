@@ -22,6 +22,7 @@
 
     env: {
       OPENROUTER_API_KEY: "${config.openrouter_api_key}",
+      AGENT_LLM: "meta-llama/llama-3.1-8b-instruct:free",
     },
 
     network: {
