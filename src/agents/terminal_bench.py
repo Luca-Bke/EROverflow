@@ -42,7 +42,7 @@ class TerminalBenchAgent:
     """
 
     def __init__(self, model: str | None = None) -> None:
-        self._model = model or "anthropic/claude-3.5-haiku"
+        self._model = model or os.getenv("AGENT_LLM", "DeepSeek-R1-Distill-Llama-70B")
         self._llm: ChatOpenAI | None = None
         self._history: list[Any] = []
         self._turn_count = 0
@@ -50,13 +50,13 @@ class TerminalBenchAgent:
     def _create_llm(self) -> ChatOpenAI:
         if self._llm:
             return self._llm
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
         if not api_key:
-            raise ValueError("OPENROUTER_API_KEY environment variable not set")
+            raise ValueError("ACADEMICCLOUD_API_KEY environment variable not set")
         self._llm = ChatOpenAI(
             model=self._model,
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
+            base_url="https://chat-ai.academiccloud.de/v1",
             temperature=0.0,
         )
         return self._llm
