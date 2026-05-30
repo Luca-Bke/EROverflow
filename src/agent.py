@@ -8,7 +8,5 @@ class Agent:
     def __init__(self):
         self._backend = TerminalBenchAgent()
 
-
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         await self._backend.run(message, updater)
-
