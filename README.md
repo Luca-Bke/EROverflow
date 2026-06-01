@@ -51,7 +51,6 @@ Set these environment variables before starting the server:
 
 ```powershell
 $env:LANGSMITH_API_KEY="<your-langsmith-api-key>"
-$env:LANGSMITH_TRACING="true"
 $env:LANGSMITH_PROJECT="EROverflow-terminal-bench"
 
 # optional if you use a self-hosted LangSmith instance
@@ -64,8 +63,8 @@ Then run the server as usual:
 uv run src/server.py
 ```
 
-If `LANGSMITH_API_KEY` is present, the agent also auto-enables `LANGSMITH_TRACING=true`
-and sets a default project name when none is provided.
+If `LANGSMITH_API_KEY` is present, tracing is enabled by code and a default
+project name is set when none is provided.
 
 ## Running with Docker
 

@@ -11,7 +11,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
-from langsmith import traceable
+from langsmith import traceable, tracing_context
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
@@ -46,9 +46,7 @@ class TerminalBenchAgent:
                                 "meta-llama-3.1-8b-instruct")
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
-        # Auto-enable tracing when a LangSmith API key is present.
-        if os.getenv("LANGSMITH_API_KEY") and not os.getenv("LANGSMITH_TRACING"):
-            os.environ["LANGSMITH_TRACING"] = "true"
+        self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
 
@@ -133,7 +131,8 @@ class TerminalBenchAgent:
             parts=[Part(root=TextPart(text=response_text))]
         )
 
-        self._trace_boundary(input_text, response_text)
+        with tracing_context(enabled=self._trace_enabled):
+            self._trace_boundary(input_text, response_text)
 
         await updater.submit(response_msg)
 
