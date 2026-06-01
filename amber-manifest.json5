@@ -37,5 +37,5 @@
   },
 
   // Capabilities exposed to the scenario
-  exports: { a2a: "a2a", agent: "a2a" },
+  exports: {agent: "a2a" },
 }
