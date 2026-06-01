@@ -44,6 +44,29 @@ uv sync
 uv run src/server.py
 ```
 
+## LangChain Tracing (LangSmith)
+
+Tracing for the Terminal Bench agent (`src/agents/terminal_bench.py`) is wired in.
+Set these environment variables before starting the server:
+
+```powershell
+$env:LANGSMITH_API_KEY="<your-langsmith-api-key>"
+$env:LANGSMITH_TRACING="true"
+$env:LANGSMITH_PROJECT="EROverflow-terminal-bench"
+
+# optional if you use a self-hosted LangSmith instance
+# $env:LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
+```
+
+Then run the server as usual:
+
+```bash
+uv run src/server.py
+```
+
+If `LANGSMITH_API_KEY` is present, the agent also auto-enables `LANGSMITH_TRACING=true`
+and sets a default project name when none is provided.
+
 ## Running with Docker
 
 ```bash

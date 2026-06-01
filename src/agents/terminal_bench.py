@@ -11,6 +11,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
+from langsmith import traceable
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
@@ -34,7 +35,6 @@ Rules:
 - Do not include any text outside the JSON object
 """
 
-
 class TerminalBenchAgent:
     """Purple agent for Terminal Bench 2.0.
 
@@ -46,11 +46,32 @@ class TerminalBenchAgent:
                                 "meta-llama-3.1-8b-instruct")
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
+        # Auto-enable tracing when a LangSmith API key is present.
+        if os.getenv("LANGSMITH_API_KEY") and not os.getenv("LANGSMITH_TRACING"):
+            os.environ["LANGSMITH_TRACING"] = "true"
+        if not os.getenv("LANGSMITH_PROJECT"):
+            os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
+
         self._llm: ChatOpenAI | None = None
         self._llm_client: OpenAI | None = None
         self._history: list[Any] = []
         self._turn_count = 0
         self._temperature = 0.7
+        self._boundary_logged = False
+
+    @traceable(name="green_purple_boundary", run_type="chain")
+    def _trace_boundary(self, input_text: str, response_text: str) -> dict[str, str]:
+        if self._boundary_logged:
+            return {"skipped": "true"}
+        self._boundary_logged = True
+        return {
+            "event": "trace_boundary",
+            "source": "green_agent",
+            "via": "terminal_bench",
+            "target": "green_agent",
+            "start_payload": input_text,
+            "end_payload": response_text,
+        }
 
     def _create_llm(self) -> ChatOpenAI:
         """Create or get the ChatOpenAI instance for AcademicCloud."""
@@ -68,6 +89,8 @@ class TerminalBenchAgent:
             api_key=api_key,
             base_url=self._base_url,
             temperature=self._temperature,
+            tags=["eroverflow", "terminal-bench"],
+            metadata={"agent": "terminal_bench", "provider": "academiccloud"},
         )
         return self._llm
 
@@ -109,6 +132,8 @@ class TerminalBenchAgent:
         response_msg = updater.new_agent_message(
             parts=[Part(root=TextPart(text=response_text))]
         )
+
+        self._trace_boundary(input_text, response_text)
 
         await updater.submit(response_msg)
 
