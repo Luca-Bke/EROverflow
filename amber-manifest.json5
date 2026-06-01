@@ -5,8 +5,8 @@
     type: "object",
     properties: {
       academiccloud_api_key: { type: "string", secret: true },
-      LANGSMITH_API_KEY: { type: "string", secret: true },
-      LANGSMITH_PROJECT: { type: "string", secret: false },
+      tracing_key: { type: "string", secret: true },
+      tracing_project: { type: "string", secret: false },
     },
     required: ["academiccloud_api_key"],
     additionalProperties: false,
@@ -24,8 +24,8 @@
 
     env: {
       ACADEMICCLOUD_API_KEY: "${config.academiccloud_api_key}",
-      LANGSMITH_API_KEY: "${config.LANGSMITH_API_KEY}",
-      LANGSMITH_PROJECT: "${config.LANGSMITH_PROJECT}",
+      LANGSMITH_API_KEY: "${config.tracing_key}",
+      LANGSMITH_PROJECT: "${config.tracing_project}",
     },
 
     network: {
