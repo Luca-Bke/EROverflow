@@ -69,7 +69,8 @@ def main():
         agent_card=agent_card,
         http_handler=request_handler,
     )
-    uvicorn.run(server.build(), host=args.host, port=args.port)
+    with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
+        uvicorn.run(server.build(), host=args.host, port=args.port)
 
 
 if __name__ == '__main__':
