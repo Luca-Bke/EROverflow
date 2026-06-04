@@ -91,14 +91,14 @@ class TerminalBenchAgent:
             metadata={"agent": "terminal_bench", "provider": "academiccloud"},
         )
         return self._llm
-
+    @traceable(run_type="llm")
     async def _invoke_llm_async(self, messages: list[Any]) -> str:
         """Invoke the LLM in a non-blocking way using asyncio."""
         llm = self._create_llm()
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
         return result
-
+    @traceable
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         input_text = get_message_text(message)
 
