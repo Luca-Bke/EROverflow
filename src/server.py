@@ -55,8 +55,8 @@ def main():
         description="A2A purple agent for Terminal Bench 2.0 — solves hard, realistic command-line tasks",
         url=args.card_url or f"http://{args.host}:{args.port}/",
         version='1.0.0',
-        default_input_modes=['text'],
-        default_output_modes=['text'],
+        default_input_modes=['text', "application/json"],
+        default_output_modes=['text', "application/json"],
         capabilities=AgentCapabilities(streaming=True),
         skills=[skill]
     )
