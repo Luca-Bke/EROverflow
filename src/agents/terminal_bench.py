@@ -5,10 +5,13 @@ issues shell commands one at a time via exec_request, and signals completion
 with final. State persists across turns via the shared Agent instance per context_id.
 """
 
+import json
 import os
 import asyncio
 from typing import Any
+from urllib import response
 
+import httpx
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langsmith import traceable, tracing_context
@@ -17,6 +20,8 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
 from openai import OpenAI
+
+from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 
 SYSTEM_PROMPT = """\
 You are a terminal agent solving command-line tasks in a live shell environment.
@@ -34,6 +39,7 @@ Rules:
 - Maximum 30 commands total
 - Do not include any text outside the JSON object
 """
+
 
 class TerminalBenchAgent:
     """Purple agent for Terminal Bench 2.0.
@@ -76,11 +82,7 @@ class TerminalBenchAgent:
         if self._llm:
             return self._llm
 
-        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
-
-        if not api_key:
-            raise ValueError(
-                "ACADEMICCLOUD_API_KEY environment variable not set")
+        api_key = self._get_academic_cloud_api_key()
 
         self._llm = ChatOpenAI(
             model=self._model,
@@ -91,6 +93,7 @@ class TerminalBenchAgent:
             metadata={"agent": "terminal_bench", "provider": "academiccloud"},
         )
         return self._llm
+
     @traceable(run_type="llm")
     async def _invoke_llm_async(self, messages: list[Any]) -> str:
         """Invoke the LLM in a non-blocking way using asyncio."""
@@ -98,35 +101,90 @@ class TerminalBenchAgent:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
         return result
+
+    def _get_academic_cloud_api_key(self):
+        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
+
+        if not api_key:
+            raise ValueError(
+                "ACADEMICCLOUD_API_KEY environment variable not set")
+
+        return api_key
+
+    def handle_request_iteration(self, message: Message,
+                                 updater: TaskUpdater) -> None:
+        pass
+
+    def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
+        """Post-process the LLM response to ensure it's valid JSON with expected structure."""
+
+        # here we should have some sanity checks to ensure the response is
+        # valid JSON with the expected structure and the command looks
+        # reasonable (not rm -rf / or something) before
+        # we send it back to the A2A server
+
+        try:
+            response_dict = json.loads(response_text)
+        except json.JSONDecodeError:
+            raise terminal_bench_format_exception(
+                "LLM response is not valid JSON: " + response_text)
+
+        if (response_dict.get("kind") == "exec_request"):
+            pass  # we could add additional validation on the command here if desired
+        elif (response_dict.get("kind") == "final"):
+            updater.update_status(TaskState.completed,
+                                  new_agent_text_message("Task completed."))
+
+        else:
+            # error handling / break to rerun or fix logic
+            raise terminal_bench_format_exception(
+                "LLM response JSON missing 'kind' field or has unknown kind: " + response_text)
+
+        return response_text  # valid response, pass through to A2A server
+
     @traceable
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         input_text = get_message_text(message)
 
-        self._history.append(
-            HumanMessage(content=input_text)
-        )
-
-        print(f"Received task: {input_text}")
+        print(f"Received Message: {input_text}")
 
         await updater.update_status(
             TaskState.working,
             new_agent_text_message(f"Turn {self._turn_count}: thinking...")
         )
 
+        input_dict = json.loads(input_text)
+
+        print(f"received message type: {input_dict.get("kind")}")
+
+        if input_dict.get("kind") == "task":
+            print("Received initial task instruction:",
+                  input_dict.get("instruction"))
+
+            self._history.append(HumanMessage(content=input_text))
+
+        elif input_dict.get("kind") == "exec_result":
+            print("Received execution result, updating history for next turn.")
+
+            self._history.append(AIMessage(content=input_text))
+
+        else:
+            print(f"Received unknown message type: {input_dict.get('kind')}")
+
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
+
         result = await self._invoke_llm_async(messages)
         response_text = getattr(result, "content", str(result))
         self._history.append(AIMessage(content=response_text))
 
         print(f"LLM response: {response_text}")
 
-        # add response as an artifact
-        await updater.add_artifact(
-            parts=[Part(root=TextPart(text=response_text))],
-            name="Response",
-        )
+        try:
+            self.postprocess_response(response_text, updater)
+        except terminal_bench_format_exception:
+            pass  # perform error correction or retry logic here as needed
 
-        # if the response indicates the task is complete, send final status
+        # send agent response back to A2A server
         response_msg = updater.new_agent_message(
             parts=[Part(root=TextPart(text=response_text))]
         )
