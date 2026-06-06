@@ -231,3 +231,4 @@ wheels/
 
 # Virtual environments
 .venv
+test.txt
