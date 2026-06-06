@@ -4,9 +4,15 @@ from uuid import uuid4
 
 import pytest
 
-from messenger import send_message
+from messenger import send_message, Messenger
 from test_agent import send_text_message, validate_event
 from a2a.types import Message
+
+
+@pytest.fixture(scope="session")
+def messenger(request):
+    """Messenger fixture for sending messages to the agent."""
+    return Messenger()
 
 
 def _extract_message_text(msg: Message) -> str | None:

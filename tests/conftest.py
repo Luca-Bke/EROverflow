@@ -24,8 +24,3 @@ def agent(request):
         pytest.exit(f"Could not connect to agent at {url}: {e}", returncode=1)
 
     return url
-
-@pytest.fixture(scope="session")
-def messenger(request):
-    """Messenger fixture for sending messages to the agent."""
-    return Messenger()
