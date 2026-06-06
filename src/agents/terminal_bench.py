@@ -38,6 +38,8 @@ Rules:
 - If a command fails, diagnose and try a different approach
 - Maximum 30 commands total
 - Do not include any text outside the JSON object
+- Do not send two commands in a row without waiting for the execution result and updating your history
+- Always ensure to end with the final command that completes the task, do not leave the task hanging without signaling completion
 """
 
 
@@ -52,15 +54,16 @@ class TerminalBenchAgent:
                                 "meta-llama-3.1-8b-instruct")
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
-        self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
+        self._trace_enabled = False  # bool(os.getenv("LANGSMITH_API_KEY"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
 
         self._llm: ChatOpenAI | None = None
-        self._llm_client: OpenAI | None = None
         self._history: list[Any] = []
         self._turn_count = 0
+        self._max_turn_count = 10
         self._temperature = 0.7
+
         self._boundary_logged = False
 
     @traceable(name="green_purple_boundary", run_type="chain")
@@ -111,9 +114,55 @@ class TerminalBenchAgent:
 
         return api_key
 
-    def handle_request_iteration(self, message: Message,
-                                 updater: TaskUpdater) -> None:
-        pass
+    async def handle_request_iteration(self, message: Message,
+                                       updater: TaskUpdater) -> str:
+        input_text = get_message_text(message)
+
+        # this is just to not waist api calls
+        if (self._history is not None):
+            if (len(self._history) >= 2):
+                if (input_text == self._history[-2].content):
+                    print("Received duplicate message, skipping processing.")
+                    # or some other appropriate response or handling
+                    return json.dumps({"kind": "final"})
+
+        print(f"Received Message: {input_text}")
+
+        await updater.start_work(
+            new_agent_text_message(f"Turn {self._turn_count}: thinking...")
+        )
+
+        input_dict = json.loads(input_text)
+
+        print(f"received message type: {input_dict.get("kind")}")
+
+        if input_dict.get("kind") == "task":
+            print("Received initial task instruction:",
+                  input_dict.get("instruction"))
+
+            self._history.append(HumanMessage(content=input_text))
+
+        elif input_dict.get("kind") == "exec_result":
+            print("Received execution result, updating history for next turn.")
+            self._history.append(AIMessage(content=input_text))
+
+        else:
+            print(f"Received unknown message type: {input_dict.get('kind')}")
+
+        messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
+
+        result = await self._invoke_llm_async(messages)
+        response_text = getattr(result, "content", str(result))
+        self._history.append(AIMessage(content=response_text))
+
+        print(f"LLM response: {response_text}")
+
+        try:
+            response_text = self.postprocess_response(response_text, updater)
+        except terminal_bench_format_exception:
+            pass  # perform error correction or retry logic here as needed
+
+        return response_text
 
     def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
         """Post-process the LLM response to ensure it's valid JSON with expected structure."""
@@ -132,9 +181,7 @@ class TerminalBenchAgent:
         if (response_dict.get("kind") == "exec_request"):
             pass  # we could add additional validation on the command here if desired
         elif (response_dict.get("kind") == "final"):
-            updater.update_status(TaskState.completed,
-                                  new_agent_text_message("Task completed."))
-
+            pass  # fine as well
         else:
             # error handling / break to rerun or fix logic
             raise terminal_bench_format_exception(
@@ -144,60 +191,34 @@ class TerminalBenchAgent:
 
     @traceable
     async def run(self, message: Message, updater: TaskUpdater) -> None:
-        input_text = get_message_text(message)
 
-        print(f"Received Message: {input_text}")
+        if self._turn_count < self._max_turn_count:
 
-        await updater.update_status(
-            TaskState.working,
-            new_agent_text_message(f"Turn {self._turn_count}: thinking...")
-        )
+            response_result = await self.handle_request_iteration(message, updater)
 
-        input_dict = json.loads(input_text)
+            if (response_result == json.dumps({"kind": "final"})):
+                print("Agent signaled task completion.")
+                # signal completion to A2A server
+                updater.complete(updater.new_agent_message(
+                    [Part(root=TextPart(text=response_result))]))
 
-        print(f"received message type: {input_dict.get("kind")}")
+            # send agent response back to A2A server
+            response_msg = updater.new_agent_message(
+                parts=[Part(root=TextPart(text=response_result))]
+            )
 
-        if input_dict.get("kind") == "task":
-            print("Received initial task instruction:",
-                  input_dict.get("instruction"))
+            print(
+                f"Submitting response for turn {self._turn_count}: {response_msg}")
 
-            self._history.append(HumanMessage(content=input_text))
+            with tracing_context(enabled=self._trace_enabled):
+                self._trace_boundary(
+                    get_message_text(message), response_msg)
 
-        elif input_dict.get("kind") == "exec_result":
-            print("Received execution result, updating history for next turn.")
+            # our task lives for only one turn, we need to complete it
+            # otherwise the executor will respond with an empty message for us => error
+            await updater.complete(response_msg)
 
-            self._history.append(AIMessage(content=input_text))
-
-        else:
-            print(f"Received unknown message type: {input_dict.get('kind')}")
-
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
-
-        result = await self._invoke_llm_async(messages)
-        response_text = getattr(result, "content", str(result))
-        self._history.append(AIMessage(content=response_text))
-
-        print(f"LLM response: {response_text}")
-
-        try:
-            self.postprocess_response(response_text, updater)
-        except terminal_bench_format_exception:
-            pass  # perform error correction or retry logic here as needed
-
-        # send agent response back to A2A server
-        response_msg = updater.new_agent_message(
-            parts=[Part(root=TextPart(text=response_text))]
-        )
-
-        with tracing_context(enabled=self._trace_enabled):
-            self._trace_boundary(input_text, response_text)
-
-        await updater.submit(response_msg)
-
-        await updater.update_status(
-            TaskState.completed, new_agent_text_message(
-                "Completed requested task.")
-        )
+            self._turn_count += 1
 
 
 __all__ = ["TerminalBenchAgent"]
