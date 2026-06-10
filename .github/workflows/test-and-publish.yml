@@ -93,3 +93,12 @@ jobs:
           echo "## Docker Image Published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Trigger workflow in leaderboard repo
+        if: success() && github.event_name != 'pull_request'
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.LEADERBOARD_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/CShark-4891/terminal-bench-leaderboard/actions/workflows/run-scenario.yml/dispatches \
+            -d '{"ref":"main","inputs":{}}'
