@@ -25,3 +25,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+asyncio_mode = "auto"
