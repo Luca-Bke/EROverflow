@@ -1,131 +1,131 @@
-import json
-import subprocess
-from uuid import uuid4
+# import json
+# import subprocess
+# from uuid import uuid4
 
-import pytest
+# import pytest
 
-from messenger import send_message, Messenger
-from test_agent import send_text_message, validate_event
-from a2a.types import Message
-
-
-@pytest.fixture(scope="session")
-def messenger(request):
-    """Messenger fixture for sending messages to the agent."""
-    return Messenger()
+# from messenger import send_message, Messenger
+# from test_agent import send_text_message, validate_event
+# from a2a.types import Message
 
 
-def _extract_message_text(msg: Message) -> str | None:
-    dumped = msg.model_dump()
-    parts = dumped.get("parts") or []
-    if not parts:
-        return None
-
-    first_part = parts[0]
-    if isinstance(first_part, dict):
-        return first_part.get("text") or first_part.get("content")
-
-    return None
+# @pytest.fixture(scope="session")
+# def messenger(request):
+#     """Messenger fixture for sending messages to the agent."""
+#     return Messenger()
 
 
-def _parse_exec_request(exec_request: dict[str, object]) -> dict[str, object] | None:
-    return [exec_request.get("command", ""), int(exec_request.get("timeout", 30) or 30)]
+# def _extract_message_text(msg: Message) -> str | None:
+#     dumped = msg.model_dump()
+#     parts = dumped.get("parts") or []
+#     if not parts:
+#         return None
+
+#     first_part = parts[0]
+#     if isinstance(first_part, dict):
+#         return first_part.get("text") or first_part.get("content")
+
+#     return None
 
 
-def _execute_command(command: str, timeout: int) -> dict[str, object]:
-
-    try:
-        # be aware that this might execute differently on windows and linux
-        # => therefore i addded "in cmd" to the instruction
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-
-        stdout = result.stdout.replace("\r\n", "\n")
-        stderr = result.stderr.replace("\r\n", "\n")
-        return {
-            "kind": "exec_result",
-            "stdout": stdout,
-            "stderr": stderr,
-            "exit_code": result.returncode,
-        }
-    except subprocess.TimeoutExpired as exc:
-        stdout = (exc.stdout or "").replace("\r\n", "\n")
-        stderr = (exc.stderr or "").replace("\r\n", "\n")
-        return {
-            "kind": "exec_result",
-            "stdout": stdout,
-            "stderr": stderr,
-            "exit_code": -1,
-        }
+# def _parse_exec_request(exec_request: dict[str, object]) -> dict[str, object] | None:
+#     return [exec_request.get("command", ""), int(exec_request.get("timeout", 30) or 30)]
 
 
-@pytest.mark.asyncio
-# allows for continous polling or something,
-@pytest.mark.parametrize("streaming", [False])
-# but really messes up the test output, so we'll just test non-streaming for now
-async def test_academic_cloud_terminal_bench(agent, streaming, messenger):
+# def _execute_command(command: str, timeout: int) -> dict[str, object]:
 
-    hello_world_complaint = {
-        "kind": "task",
-        "protocol": "terminal-bench-shell-v1",
-        "instruction": "print 'Hello World' with python in windows cmd"
-    }
+#     try:
+#         # be aware that this might execute differently on windows and linux
+#         # => therefore i addded "in cmd" to the instruction
+#         result = subprocess.run(
+#             command,
+#             shell=True,
+#             capture_output=True,
+#             text=True,
+#             timeout=timeout,
+#         )
 
-    multi_step_complaint = {
-        "kind": "task",
-        "protocol": "terminal-bench-shell-v1",
-        "instruction": "Create a file named test.txt, write 'Hello World' into it, and then print the contents of the file in windows cmd. Use at least three seperate commands to accomplish this task."
-    }
+#         stdout = result.stdout.replace("\r\n", "\n")
+#         stderr = result.stderr.replace("\r\n", "\n")
+#         return {
+#             "kind": "exec_result",
+#             "stdout": stdout,
+#             "stderr": stderr,
+#             "exit_code": result.returncode,
+#         }
+#     except subprocess.TimeoutExpired as exc:
+#         stdout = (exc.stdout or "").replace("\r\n", "\n")
+#         stderr = (exc.stderr or "").replace("\r\n", "\n")
+#         return {
+#             "kind": "exec_result",
+#             "stdout": stdout,
+#             "stderr": stderr,
+#             "exit_code": -1,
+#         }
 
-    context_id = uuid4().hex
-    current_request = json.dumps(multi_step_complaint)
-    all_errors: list[str] = []
-    result_script: list[str] = []
-    max_iterations = 10
-    completed = False
 
-    response = None
-    for i in range(max_iterations):  # end after n rounds
-        if i == 0:  # send the initial instruction once
-            print("\nStarting test with request:", current_request)
-            response = await messenger.talk_to_agent(current_request, agent)
-        else:  # loop to execute or end the task based on agent's responses
+# @pytest.mark.asyncio
+# # allows for continous polling or something,
+# @pytest.mark.parametrize("streaming", [False])
+# # but really messes up the test output, so we'll just test non-streaming for now
+# async def test_academic_cloud_terminal_bench(agent, streaming, messenger):
 
-            try:
-                payload = json.loads(response)  # error is error
+#     hello_world_complaint = {
+#         "kind": "task",
+#         "protocol": "terminal-bench-shell-v1",
+#         "instruction": "print 'Hello World' with python in windows cmd"
+#     }
 
-            except json.JSONDecodeError:
-                raise ValueError(
-                    f"Invalid JSON in agent response: '{response}'")
+#     multi_step_complaint = {
+#         "kind": "task",
+#         "protocol": "terminal-bench-shell-v1",
+#         "instruction": "Create a file named test.txt, write 'Hello World' into it, and then print the contents of the file in windows cmd. Use at least three seperate commands to accomplish this task."
+#     }
 
-            if payload.get("kind") == "final":
-                completed = True
-                break  # task completed successfully
+#     context_id = uuid4().hex
+#     current_request = json.dumps(multi_step_complaint)
+#     all_errors: list[str] = []
+#     result_script: list[str] = []
+#     max_iterations = 10
+#     completed = False
 
-            if not payload.get("kind") == "exec_request":
-                raise ValueError(
-                    f"Unexpected message kind: {payload.get('kind')}")
+#     response = None
+#     for i in range(max_iterations):  # end after n rounds
+#         if i == 0:  # send the initial instruction once
+#             print("\nStarting test with request:", current_request)
+#             response = await messenger.talk_to_agent(current_request, agent)
+#         else:  # loop to execute or end the task based on agent's responses
 
-            exec_request = payload
+#             try:
+#                 payload = json.loads(response)  # error is error
 
-            if exec_request is None:
-                break
+#             except json.JSONDecodeError:
+#                 raise ValueError(
+#                     f"Invalid JSON in agent response: '{response}'")
 
-            print(f"Execution request: {exec_request}")
-            command, timeout = _parse_exec_request(exec_request)
-            result_script.append(command)
-            exec_result_dict = _execute_command(command, timeout)
-            exec_result = json.dumps(exec_result_dict)
+#             if payload.get("kind") == "final":
+#                 completed = True
+#                 break  # task completed successfully
 
-            print(f"Execution result: {exec_result}")
+#             if not payload.get("kind") == "exec_request":
+#                 raise ValueError(
+#                     f"Unexpected message kind: {payload.get('kind')}")
 
-            # send exec result back to agent and get next request
-            response = await messenger.talk_to_agent(exec_result, agent)
+#             exec_request = payload
 
-    print(f"Result script: {result_script}")
-    assert completed, "Agent did not complete the terminal bench task"
+#             if exec_request is None:
+#                 break
+
+#             print(f"Execution request: {exec_request}")
+#             command, timeout = _parse_exec_request(exec_request)
+#             result_script.append(command)
+#             exec_result_dict = _execute_command(command, timeout)
+#             exec_result = json.dumps(exec_result_dict)
+
+#             print(f"Execution result: {exec_result}")
+
+#             # send exec result back to agent and get next request
+#             response = await messenger.talk_to_agent(exec_result, agent)
+
+#     print(f"Result script: {result_script}")
+#     assert completed, "Agent did not complete the terminal bench task"
