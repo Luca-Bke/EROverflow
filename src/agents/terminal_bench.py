@@ -8,6 +8,7 @@ with final. State persists across turns via the shared Agent instance per contex
 import json
 import os
 import asyncio
+import re
 import subprocess
 from typing import Any
 
@@ -47,6 +48,26 @@ class TerminalBenchAgent:
 
     Maintains per-session conversation history across A2A turns.
     """
+
+    # Always interactive — no non-interactive mode exists
+    _ALWAYS_INTERACTIVE = frozenset({
+        "vim", "vi", "nvim", "nano", "emacs", "pico",
+        "less", "more", "man",
+        "top", "htop", "btop",
+        "ssh",
+        "mysql", "psql",
+    })
+
+    # Interactive only when called without arguments (bare REPL invocation)
+    _REPL_COMMANDS = frozenset({"python", "python3", "node", "irb", "iex"})
+
+    _DESTRUCTIVE_PATTERNS = [
+        r"rm\s+-[^\s]*r[^\s]*\s+/",   # rm -rf /
+        r"dd\s+.*of=/dev/[sh]d",       # dd onto block device
+        r":\(\)\s*\{.*\}",             # fork bomb
+        r"mkfs\.",                      # format filesystem
+        r">\s*/dev/[sh]d",             # write directly to block device
+    ]
 
     def __init__(self, model: str | None = None) -> None:
         self._model = os.getenv("ACADEMICCLOUD_MODEL",
@@ -172,9 +193,32 @@ class TerminalBenchAgent:
 
         raise last_error
 
+    def _check_no_interactive_commands(self, command: str) -> None:
+        tokens = command.strip().split()
+        first_token = tokens[0].split("/")[-1]
+        if first_token in self._ALWAYS_INTERACTIVE:
+            raise terminal_bench_format_exception(
+                f"Interactive command not allowed: {first_token!r}. "
+                "Use non-interactive alternatives (e.g. python -c, git --no-pager)."
+            )
+        if first_token in self._REPL_COMMANDS and len(tokens) == 1:
+            raise terminal_bench_format_exception(
+                f"Bare REPL invocation not allowed: {first_token!r}. "
+                f"Use {first_token} -c '...' or {first_token} script.py instead."
+            )
+
+    def _check_no_destructive_commands(self, command: str) -> None:
+        for pattern in self._DESTRUCTIVE_PATTERNS:
+            if re.search(pattern, command):
+                raise terminal_bench_format_exception(
+                    f"Potentially destructive command blocked: {command!r}"
+                )
+
     def _check_command_syntax(self, command: str) -> None:
         if not command:
             raise terminal_bench_format_exception("exec_request has an empty command")
+        self._check_no_interactive_commands(command)
+        self._check_no_destructive_commands(command)
         result = subprocess.run(
             ["bash", "-n"],
             input=command,
@@ -204,6 +248,11 @@ class TerminalBenchAgent:
         if response_dict.get("kind") == "exec_request":
             command = response_dict.get("command", "")
             self._check_command_syntax(command)
+            timeout = response_dict.get("timeout", 30)
+            if not isinstance(timeout, (int, float)) or timeout <= 0:
+                raise terminal_bench_format_exception(
+                    f"exec_request has invalid timeout: {timeout!r} (must be > 0)"
+                )
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
         else:
