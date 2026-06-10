@@ -1,7 +1,9 @@
 import json
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
+from a2a.types import Message, Part, TextPart
 
 
 @pytest.fixture
@@ -25,14 +27,18 @@ def test_unclosed_quote_raises(agent):
     with pytest.raises(terminal_bench_format_exception):
         agent._check_command_syntax("echo 'hello")
 
+def test_empty_command_raises(agent):
+    with pytest.raises(terminal_bench_format_exception, match="empty command"):
+        agent._check_command_syntax("")
+
 def test_empty_command_in_exec_request_raises(agent):
     payload = json.dumps({"kind": "exec_request", "command": "", "timeout": 30})
-    with pytest.raises(terminal_bench_format_exception, match="missing a command"):
+    with pytest.raises(terminal_bench_format_exception, match="empty command"):
         agent.postprocess_response(payload, updater=None)
 
 def test_missing_command_field_raises(agent):
     payload = json.dumps({"kind": "exec_request", "timeout": 30})
-    with pytest.raises(terminal_bench_format_exception, match="missing a command"):
+    with pytest.raises(terminal_bench_format_exception, match="empty command"):
         agent.postprocess_response(payload, updater=None)
 
 
@@ -61,3 +67,55 @@ def test_unknown_kind_raises(agent):
     payload = json.dumps({"kind": "unknown_thing"})
     with pytest.raises(terminal_bench_format_exception, match="unknown kind"):
         agent.postprocess_response(payload, updater=None)
+
+
+# --- retry logic in handle_request_iteration ---
+
+def _make_message(text: str) -> Message:
+    return Message(
+        kind="message",
+        role="user",
+        parts=[Part(root=TextPart(kind="text", text=text))],
+        message_id="test-id",
+    )
+
+
+async def test_retry_succeeds_on_second_attempt(agent):
+    bad = "not valid json"
+    good = json.dumps({"kind": "exec_request", "command": "echo hello", "timeout": 30})
+
+    call_count = 0
+
+    async def fake_invoke(messages):
+        nonlocal call_count
+        call_count += 1
+        mock = MagicMock()
+        mock.content = bad if call_count == 1 else good
+        return mock
+
+    agent._invoke_llm_async = fake_invoke
+
+    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    updater = MagicMock()
+    updater.start_work = AsyncMock()
+
+    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+
+    assert result == good
+    assert call_count == 2
+
+
+async def test_retry_fails_after_max_attempts(agent):
+    async def fake_invoke(messages):
+        mock = MagicMock()
+        mock.content = "not valid json"
+        return mock
+
+    agent._invoke_llm_async = fake_invoke
+
+    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    updater = MagicMock()
+    updater.start_work = AsyncMock()
+
+    with pytest.raises(terminal_bench_format_exception):
+        await agent.handle_request_iteration(_make_message(task_payload), updater)

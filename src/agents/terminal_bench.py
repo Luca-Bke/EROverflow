@@ -61,6 +61,7 @@ class TerminalBenchAgent:
         self._history: list[Any] = []
         self._turn_count = 0
         self._max_turn_count = 10
+        self._max_syntax_retries = 3
         self._temperature = 0.7
 
         self._boundary_logged = False
@@ -143,27 +144,37 @@ class TerminalBenchAgent:
 
         elif input_dict.get("kind") == "exec_result":
             print("Received execution result, updating history for next turn.")
-            self._history.append(AIMessage(content=input_text))
+            self._history.append(HumanMessage(content=input_text))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
 
-        result = await self._invoke_llm_async(messages)
-        response_text = getattr(result, "content", str(result))
-        self._history.append(AIMessage(content=response_text))
+        last_error: terminal_bench_format_exception | None = None
+        for attempt in range(self._max_syntax_retries):
+            result = await self._invoke_llm_async(messages)
+            response_text = getattr(result, "content", str(result))
+            print(f"LLM response (attempt {attempt + 1}): {response_text}")
 
-        print(f"LLM response: {response_text}")
+            try:
+                response_text = self.postprocess_response(response_text, updater)
+                self._history.append(AIMessage(content=response_text))
+                return response_text
+            except terminal_bench_format_exception as e:
+                last_error = e
+                print(f"Format error on attempt {attempt + 1}: {e.message}")
+                messages.append(AIMessage(content=response_text))
+                messages.append(HumanMessage(content=json.dumps({
+                    "kind": "error",
+                    "error": e.message,
+                })))
 
-        try:
-            response_text = self.postprocess_response(response_text, updater)
-        except terminal_bench_format_exception:
-            pass  # perform error correction or retry logic here as needed
-
-        return response_text
+        raise last_error
 
     def _check_command_syntax(self, command: str) -> None:
+        if not command:
+            raise terminal_bench_format_exception("exec_request has an empty command")
         result = subprocess.run(
             ["bash", "-n"],
             input=command,
@@ -192,9 +203,6 @@ class TerminalBenchAgent:
 
         if response_dict.get("kind") == "exec_request":
             command = response_dict.get("command", "")
-            if not command:
-                raise terminal_bench_format_exception(
-                    "exec_request missing a command: " + response_text)
             self._check_command_syntax(command)
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
