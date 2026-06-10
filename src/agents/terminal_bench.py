@@ -170,7 +170,8 @@ class TerminalBenchAgent:
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
+        turn_info = f"\nCurrent turn: {self._turn_count + 1} of {self._max_turn_count}."                                                                                                                                                                                                   
+        messages = [SystemMessage(content=SYSTEM_PROMPT + turn_info)] + self._history     
 
         last_error: terminal_bench_format_exception | None = None
         for attempt in range(self._max_syntax_retries):
