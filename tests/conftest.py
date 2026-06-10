@@ -1,6 +1,6 @@
 import httpx
 import pytest
-from messenger import Messenger
+from src.messenger import Messenger
 
 
 def pytest_addoption(parser):
