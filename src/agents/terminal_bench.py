@@ -8,6 +8,7 @@ with final. State persists across turns via the shared Agent instance per contex
 import json
 import os
 import asyncio
+import subprocess
 from typing import Any
 
 import httpx
@@ -162,6 +163,19 @@ class TerminalBenchAgent:
 
         return response_text
 
+    def _check_command_syntax(self, command: str) -> None:
+        result = subprocess.run(
+            ["bash", "-n"],
+            input=command,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            raise terminal_bench_format_exception(
+                f"Command has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
+            )
+
     def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
         """Post-process the LLM response to ensure it's valid JSON with expected structure."""
 
@@ -176,8 +190,10 @@ class TerminalBenchAgent:
             raise terminal_bench_format_exception(
                 "LLM response is not valid JSON: " + response_text)
 
-        if (response_dict.get("kind") == "exec_request"):
-            pass  # we could add additional validation on the command here if desired
+        if response_dict.get("kind") == "exec_request":
+            command = response_dict.get("command", "")
+            if command:
+                self._check_command_syntax(command)
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
         else:
