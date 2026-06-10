@@ -192,8 +192,10 @@ class TerminalBenchAgent:
 
         if response_dict.get("kind") == "exec_request":
             command = response_dict.get("command", "")
-            if command:
-                self._check_command_syntax(command)
+            if not command:
+                raise terminal_bench_format_exception(
+                    "exec_request missing a command: " + response_text)
+            self._check_command_syntax(command)
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
         else:
