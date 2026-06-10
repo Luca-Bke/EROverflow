@@ -9,7 +9,6 @@ import json
 import os
 import asyncio
 from typing import Any
-from urllib import response
 
 import httpx
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
@@ -19,7 +18,6 @@ from langsmith import traceable, tracing_context
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
-from openai import OpenAI
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 
