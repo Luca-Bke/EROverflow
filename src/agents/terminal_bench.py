@@ -22,8 +22,9 @@ from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
-from agents.tools.bash_syntax_checker import ExecRequestChecker
-from agents.tools.response_format_checker import ResponseFormatChecker
+from agents.tools.AgentInnerMessage import AgentInnerMessage
+from agents.tools.ExecRequestChecker import ExecRequestChecker
+from agents.tools.ResponseFormatChecker import ResponseFormatChecker
 
 SYSTEM_PROMPT = """\
 You are a terminal agent solving command-line tasks in a live shell environment.
@@ -39,6 +40,7 @@ Rules:
 - Verify your work before sending final (run the test or check the output)
 - If a command fails, diagnose and try a different approach
 - Maximum 30 commands total
+- Only one execution request may be performed at a time, do not generate a response with two consecutive json requests
 - Do not include any text outside the JSON object
 - Do not send two commands in a row without waiting for the execution result and updating your history
 - Always ensure to end with the final command that completes the task, do not leave the task hanging without signaling completion
@@ -163,13 +165,15 @@ class TerminalBenchAgent:
             try:
                 response_text = self.postprocess_response(
                     response_text, updater)
+
                 self._history.append(AIMessage(content=response_text))
                 return response_text
+
             except terminal_bench_format_exception as e:
                 last_error = e
                 print(f"Format error on attempt {attempt + 1}: {e.message}")
                 messages.append(AIMessage(content=response_text))
-                messages.append(HumanMessage(content=json.dumps({
+                messages.append(AgentInnerMessage(content=json.dumps({
                     "kind": "error",
                     "error": e.message,
                 })))

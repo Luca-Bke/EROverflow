@@ -63,7 +63,7 @@ class ExecRequestChecker():
         )
         if result.returncode != 0:
             raise terminal_bench_format_exception(
-                f"Command has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
+                f"command in exec request has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
             )
 
     def check_timeout(timeout):

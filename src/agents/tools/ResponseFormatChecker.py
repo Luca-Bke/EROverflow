@@ -9,4 +9,4 @@ class ResponseFormatChecker():
             return json.loads(response_text)
         except json.JSONDecodeError:
             raise terminal_bench_format_exception(
-                "LLM response is not valid JSON: " + response_text)
+                "The given response is not valid JSON: " + response_text)
