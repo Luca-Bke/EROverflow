@@ -22,6 +22,8 @@ from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
+from agents.tools.bash_syntax_checker import ExecRequestChecker
+from agents.tools.response_format_checker import ResponseFormatChecker
 
 SYSTEM_PROMPT = """\
 You are a terminal agent solving command-line tasks in a live shell environment.
@@ -48,26 +50,6 @@ class TerminalBenchAgent:
 
     Maintains per-session conversation history across A2A turns.
     """
-
-    # Always interactive — no non-interactive mode exists
-    _ALWAYS_INTERACTIVE = frozenset({
-        "vim", "vi", "nvim", "nano", "emacs", "pico",
-        "less", "more", "man",
-        "top", "htop", "btop",
-        "ssh",
-        "mysql", "psql",
-    })
-
-    # Interactive only when called without arguments (bare REPL invocation)
-    _REPL_COMMANDS = frozenset({"python", "python3", "node", "irb", "iex"})
-
-    _DESTRUCTIVE_PATTERNS = [
-        r"rm\s+-[^\s]*r[^\s]*\s+/",   # rm -rf /
-        r"dd\s+.*of=/dev/[sh]d",       # dd onto block device
-        r":\(\)\s*\{.*\}",             # fork bomb
-        r"mkfs\.",                      # format filesystem
-        r">\s*/dev/[sh]d",             # write directly to block device
-    ]
 
     def __init__(self, model: str | None = None) -> None:
         self._model = os.getenv("ACADEMICCLOUD_MODEL",
@@ -179,7 +161,8 @@ class TerminalBenchAgent:
             print(f"LLM response (attempt {attempt + 1}): {response_text}")
 
             try:
-                response_text = self.postprocess_response(response_text, updater)
+                response_text = self.postprocess_response(
+                    response_text, updater)
                 self._history.append(AIMessage(content=response_text))
                 return response_text
             except terminal_bench_format_exception as e:
@@ -193,44 +176,6 @@ class TerminalBenchAgent:
 
         raise last_error
 
-    def _check_no_interactive_commands(self, command: str) -> None:
-        tokens = command.strip().split()
-        first_token = tokens[0].split("/")[-1]
-        if first_token in self._ALWAYS_INTERACTIVE:
-            raise terminal_bench_format_exception(
-                f"Interactive command not allowed: {first_token!r}. "
-                "Use non-interactive alternatives (e.g. python -c, git --no-pager)."
-            )
-        if first_token in self._REPL_COMMANDS and len(tokens) == 1:
-            raise terminal_bench_format_exception(
-                f"Bare REPL invocation not allowed: {first_token!r}. "
-                f"Use {first_token} -c '...' or {first_token} script.py instead."
-            )
-
-    def _check_no_destructive_commands(self, command: str) -> None:
-        for pattern in self._DESTRUCTIVE_PATTERNS:
-            if re.search(pattern, command):
-                raise terminal_bench_format_exception(
-                    f"Potentially destructive command blocked: {command!r}"
-                )
-
-    def _check_command_syntax(self, command: str) -> None:
-        if not command:
-            raise terminal_bench_format_exception("exec_request has an empty command")
-        self._check_no_interactive_commands(command)
-        self._check_no_destructive_commands(command)
-        result = subprocess.run(
-            ["bash", "-n"],
-            input=command,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            raise terminal_bench_format_exception(
-                f"Command has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
-            )
-
     def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
         """Post-process the LLM response to ensure it's valid JSON with expected structure."""
 
@@ -239,20 +184,12 @@ class TerminalBenchAgent:
         # reasonable (not rm -rf / or something) before
         # we send it back to the A2A server
 
-        try:
-            response_dict = json.loads(response_text)
-        except json.JSONDecodeError:
-            raise terminal_bench_format_exception(
-                "LLM response is not valid JSON: " + response_text)
+        response_dict = ResponseFormatChecker.check_agent_response_valid_json(
+            response_text)
 
         if response_dict.get("kind") == "exec_request":
-            command = response_dict.get("command", "")
-            self._check_command_syntax(command)
-            timeout = response_dict.get("timeout", 30)
-            if not isinstance(timeout, (int, float)) or timeout <= 0:
-                raise terminal_bench_format_exception(
-                    f"exec_request has invalid timeout: {timeout!r} (must be > 0)"
-                )
+            ExecRequestChecker.check_exec_request(response_dict)
+
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
         else:

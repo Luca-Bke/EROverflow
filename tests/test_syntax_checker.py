@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
+from agents.tools.bash_syntax_checker import ExecRequestChecker
 from a2a.types import Message, Part, TextPart
 
 
@@ -11,53 +12,66 @@ def agent():
     return TerminalBenchAgent()
 
 
-# --- _check_command_syntax ---
+# --- ExecRequestChecker.check_command_syntax ---
 
-def test_valid_command_passes(agent):
-    agent._check_command_syntax("echo hello")
+def test_valid_command_passes():
+    ExecRequestChecker.check_command_syntax("echo hello")
 
-def test_multiline_command_passes(agent):
-    agent._check_command_syntax("echo hello\necho world")
 
-def test_invalid_syntax_raises(agent):
+def test_multiline_command_passes():
+    ExecRequestChecker.check_command_syntax("echo hello\necho world")
+
+
+def test_invalid_syntax_raises():
     with pytest.raises(terminal_bench_format_exception, match="invalid shell syntax"):
-        agent._check_command_syntax("if then done")
+        ExecRequestChecker.check_command_syntax("if then done")
 
-def test_unclosed_quote_raises(agent):
+
+def test_unclosed_quote_raises():
     with pytest.raises(terminal_bench_format_exception):
-        agent._check_command_syntax("echo 'hello")
+        ExecRequestChecker.check_command_syntax("echo 'hello")
 
-def test_empty_command_raises(agent):
+
+def test_empty_command_raises():
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        agent._check_command_syntax("")
+        ExecRequestChecker.check_command_syntax("")
 
-def test_interactive_vim_raises(agent):
+
+def test_interactive_vim_raises():
     with pytest.raises(terminal_bench_format_exception, match="Interactive command"):
-        agent._check_command_syntax("vim file.txt")
+        ExecRequestChecker.check_command_syntax("vim file.txt")
 
-def test_interactive_less_raises(agent):
+
+def test_interactive_less_raises():
     with pytest.raises(terminal_bench_format_exception, match="Interactive command"):
-        agent._check_command_syntax("less output.log")
+        ExecRequestChecker.check_command_syntax("less output.log")
 
-def test_interactive_python_repl_raises(agent):
+
+def test_interactive_python_repl_raises():
     with pytest.raises(terminal_bench_format_exception, match="REPL"):
-        agent._check_command_syntax("python")
+        ExecRequestChecker.check_command_syntax("python")
 
-def test_python_with_c_flag_passes(agent):
-    agent._check_command_syntax("python -c 'print(1)'")
 
-def test_destructive_rm_rf_root_raises(agent):
+def test_python_with_c_flag_passes():
+    ExecRequestChecker.check_command_syntax("python -c 'print(1)'")
+
+
+def test_destructive_rm_rf_root_raises():
     with pytest.raises(terminal_bench_format_exception, match="destructive"):
-        agent._check_command_syntax("rm -rf /")
+        ExecRequestChecker.check_command_syntax("rm -rf /")
 
-def test_fork_bomb_raises(agent):
+
+def test_fork_bomb_raises():
     with pytest.raises(terminal_bench_format_exception, match="destructive"):
-        agent._check_command_syntax(":(){ :|:& };:")
+        ExecRequestChecker.check_command_syntax(":(){ :|:& };:")
+
 
 def test_empty_command_in_exec_request_raises(agent):
-    payload = json.dumps({"kind": "exec_request", "command": "", "timeout": 30})
+    payload = json.dumps(
+        {"kind": "exec_request", "command": "", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
         agent.postprocess_response(payload, updater=None)
+
 
 def test_missing_command_field_raises(agent):
     payload = json.dumps({"kind": "exec_request", "timeout": 30})
@@ -68,36 +82,46 @@ def test_missing_command_field_raises(agent):
 # --- postprocess_response ---
 
 def test_valid_exec_request_passes(agent):
-    payload = json.dumps({"kind": "exec_request", "command": "echo hello", "timeout": 30})
+    payload = json.dumps(
+        {"kind": "exec_request", "command": "echo hello", "timeout": 30})
     result = agent.postprocess_response(payload, updater=None)
     assert result == payload
 
+
 def test_invalid_command_in_exec_request_raises(agent):
-    payload = json.dumps({"kind": "exec_request", "command": "if then done", "timeout": 30})
+    payload = json.dumps(
+        {"kind": "exec_request", "command": "if then done", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception):
         agent.postprocess_response(payload, updater=None)
+
 
 def test_final_passes(agent):
     payload = json.dumps({"kind": "final"})
     result = agent.postprocess_response(payload, updater=None)
     assert result == payload
 
+
 def test_invalid_json_raises(agent):
     with pytest.raises(terminal_bench_format_exception, match="not valid JSON"):
         agent.postprocess_response("not json", updater=None)
+
 
 def test_unknown_kind_raises(agent):
     payload = json.dumps({"kind": "unknown_thing"})
     with pytest.raises(terminal_bench_format_exception, match="unknown kind"):
         agent.postprocess_response(payload, updater=None)
 
+
 def test_invalid_timeout_raises(agent):
-    payload = json.dumps({"kind": "exec_request", "command": "echo hi", "timeout": -1})
+    payload = json.dumps(
+        {"kind": "exec_request", "command": "echo hi", "timeout": -1})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
         agent.postprocess_response(payload, updater=None)
 
+
 def test_zero_timeout_raises(agent):
-    payload = json.dumps({"kind": "exec_request", "command": "echo hi", "timeout": 0})
+    payload = json.dumps(
+        {"kind": "exec_request", "command": "echo hi", "timeout": 0})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
         agent.postprocess_response(payload, updater=None)
 
@@ -115,7 +139,8 @@ def _make_message(text: str) -> Message:
 
 async def test_retry_succeeds_on_second_attempt(agent):
     bad = "not valid json"
-    good = json.dumps({"kind": "exec_request", "command": "echo hello", "timeout": 30})
+    good = json.dumps(
+        {"kind": "exec_request", "command": "echo hello", "timeout": 30})
 
     call_count = 0
 
