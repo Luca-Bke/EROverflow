@@ -65,11 +65,17 @@ class TerminalBenchAgent:
         self._llm: ChatOpenAI | None = None
         self._history: list[Any] = []
         self._turn_count = 0
-        self._max_turn_count = 10
-        self._max_syntax_retries = 3
+        self._max_turn_count = 30
+        self._max_syntax_retries = 5
         self._temperature = 0.7
 
         self._boundary_logged = False
+        self._rate_limited = False
+        self._backoff_enabled = os.getenv(
+            "ENABLE_RATE_LIMIT_BACKOFF", "true").lower() in ("1", "true", "yes", "True")
+        self._backoff_max_retries = int(os.getenv("BACKOFF_MAX_RETRIES", "4"))
+        self._backoff_base_delay = float(
+            os.getenv("BACKOFF_BASE_DELAY", "5.0"))
 
     @traceable(name="green_purple_boundary", run_type="chain")
     def _trace_boundary(self, input_text: str, response_text: str) -> dict[str, str]:
@@ -104,11 +110,32 @@ class TerminalBenchAgent:
 
     @traceable(run_type="llm")
     async def _invoke_llm_async(self, messages: list[Any]) -> str:
-        """Invoke the LLM in a non-blocking way using asyncio."""
+        """Invoke the LLM. On 429, sets _rate_limited and re-raises.
+        If ENABLE_RATE_LIMIT_BACKOFF is set, retries with exponential backoff first."""
         llm = self._create_llm()
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
-        return result
+        max_attempts = self._backoff_max_retries if self._backoff_enabled else 1
+
+        for attempt in range(max_attempts):
+            try:
+                result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
+                return result
+            except Exception as e:
+                err_str = str(e).lower()
+                is_rate_limit = (
+                    "429" in str(e)
+                    or "rate limit" in err_str
+                    or getattr(e, "status_code", None) == 429
+                )
+                if is_rate_limit and self._backoff_enabled and attempt < max_attempts - 1:
+                    delay = self._backoff_base_delay * (2 ** attempt)
+                    print(
+                        f"Rate limit hit (attempt {attempt + 1}/{max_attempts}), retrying in {delay:.0f}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                if is_rate_limit:
+                    self._rate_limited = True
+                raise e
 
     def _get_academic_cloud_api_key(self):
         api_key = os.getenv("ACADEMICCLOUD_API_KEY")
@@ -121,6 +148,10 @@ class TerminalBenchAgent:
 
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
+        if self._rate_limited:
+            print("Rate limit was previously hit; returning final immediately.")
+            return json.dumps({"kind": "final"})
+
         input_text = get_message_text(message)
 
         # this is just to not waist api calls
@@ -158,7 +189,14 @@ class TerminalBenchAgent:
 
         last_error: terminal_bench_format_exception | None = None
         for attempt in range(self._max_syntax_retries):
-            result = await self._invoke_llm_async(messages)
+            try:
+                result = await self._invoke_llm_async(messages)
+            except Exception as e:
+                if self._rate_limited:
+                    print("API rate limit exhausted; signaling final.")
+                    return json.dumps({"kind": "final"})
+                raise e
+
             response_text = getattr(result, "content", str(result))
             print(f"LLM response (attempt {attempt + 1}): {response_text}")
 
