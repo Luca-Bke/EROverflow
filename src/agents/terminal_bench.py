@@ -62,8 +62,7 @@ class TerminalBenchAgent:
     """
 
     def __init__(self, model: str | None = None) -> None:
-        # os.getenv("ACADEMICCLOUD_MODEL", "meta-llama-3.1-8b-instruct") #"qwen3-coder-30b-a3d-instruct-fp8"
-        self._model = "meta-llama-3.1-8b-instruct"
+        self._model = os.getenv("ACADEMICCLOUD_MODEL", "qwen3-coder-30b-a3b-instruct")
         print("model:", self._model)
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
