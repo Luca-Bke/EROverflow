@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
-from agents.tools.ExecRequestChecker import ExecRequestChecker
+from agents.tools.exec_request_checker import ExecRequestChecker
 from a2a.types import Message, Part, TextPart
 
 
