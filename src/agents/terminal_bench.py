@@ -13,7 +13,7 @@ import subprocess
 from typing import Any
 
 import httpx
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langsmith import traceable, tracing_context
 
@@ -23,8 +23,9 @@ from a2a.utils import get_message_text, new_agent_text_message
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.AgentInnerMessage import AgentInnerMessage
-from agents.tools.ExecRequestChecker import ExecRequestChecker
-from agents.tools.ResponseFormatChecker import ResponseFormatChecker
+from agents.tools.exec_request_checker import ExecRequestChecker
+from agents.tools.agent_memory import AgentMemory
+from agents.tools.response_format_checker import ResponseFormatChecker
 
 SYSTEM_PROMPT = """\
 You are a terminal agent solving complex command-line tasks in a live shell environment.
@@ -61,7 +62,9 @@ class TerminalBenchAgent:
     """
 
     def __init__(self, model: str | None = None) -> None:
-        self._model = "Qwen3-Coder-30B-A3B-Instruct-FP8"  # os.getenv("ACADEMICCLOUD_MODEL", "meta-llama-3.1-8b-instruct")
+        # os.getenv("ACADEMICCLOUD_MODEL", "meta-llama-3.1-8b-instruct") #"qwen3-coder-30b-a3d-instruct-fp8"
+        self._model = "meta-llama-3.1-8b-instruct"
+        print("model:", self._model)
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
         self._trace_enabled = False  # bool(os.getenv("LANGSMITH_API_KEY"))
@@ -69,7 +72,8 @@ class TerminalBenchAgent:
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
 
         self._llm: ChatOpenAI | None = None
-        self._history: list[Any] = []
+        self._memory = AgentMemory(SystemMessage(str(
+            SYSTEM_PROMPT)), short_term_window=30)
         self._turn_count = 0
         self._max_turn_count = 30
         self._max_syntax_retries = 5
@@ -160,14 +164,6 @@ class TerminalBenchAgent:
 
         input_text = get_message_text(message)
 
-        # this is just to not waist api calls
-        if (self._history is not None):
-            if (len(self._history) >= 2):
-                if (input_text == self._history[-2].content):
-                    print("Received duplicate message, skipping processing.")
-                    # or some other appropriate response or handling
-                    return json.dumps({"kind": "final"})
-
         print(f"Received Message: {input_text}")
 
         await updater.start_work(
@@ -181,17 +177,18 @@ class TerminalBenchAgent:
         if input_dict.get("kind") == "task":
             print("Received initial task instruction:",
                   input_dict.get("instruction"))
-
-            self._history.append(HumanMessage(content=input_text))
+            self._memory.set_task(HumanMessage(content=input_text))
 
         elif input_dict.get("kind") == "exec_result":
             print("Received execution result, updating history for next turn.")
-            self._history.append(HumanMessage(content=input_text))
+            self._memory.add(HumanMessage(content=input_text))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
-        messages = [SystemMessage(content=SYSTEM_PROMPT)] + self._history
+        messages = self._memory.build_messages()
+
+        print("history for llm consumption: ", messages)
 
         last_error: terminal_bench_format_exception | None = None
         for attempt in range(self._max_syntax_retries):
@@ -200,7 +197,7 @@ class TerminalBenchAgent:
             except Exception as e:
                 if self._rate_limited:
                     print("API rate limit exhausted; signaling final.")
-                    return json.dumps({"kind": "final"})
+                    return json.dumps({"error": "API Rate limit exceeded"})
                 raise e
 
             response_text = getattr(result, "content", str(result))
@@ -210,7 +207,7 @@ class TerminalBenchAgent:
                 response_text = self.postprocess_response(
                     response_text, updater)
 
-                self._history.append(AIMessage(content=response_text))
+                self._memory.add(AIMessage(content=response_text))
                 return response_text
 
             except terminal_bench_format_exception as e:
@@ -251,6 +248,7 @@ class TerminalBenchAgent:
     async def run(self, message: Message, updater: TaskUpdater) -> None:
 
         if self._turn_count < self._max_turn_count:
+            print("Run was called with the following message")
 
             response_result = await self.handle_request_iteration(message, updater)
 
