@@ -7,6 +7,7 @@
       academiccloud_api_key: { type: "string", secret: true },
       tracing_key: { type: "string", secret: true },
       tracing_project: { type: "string", secret: false },
+      tracing_endpoint: { type: "string", secret: false}
     },
     required: ["academiccloud_api_key"],
     additionalProperties: false,
