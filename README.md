@@ -42,6 +42,9 @@ uv sync
 
 # Run the server
 uv run src/server.py
+
+uv run --env-file .env src/server.py
+
 ```
 
 ## LangChain Tracing (LangSmith)
