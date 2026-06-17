@@ -42,6 +42,9 @@ uv sync
 
 # Run the server
 uv run src/server.py
+
+uv run --env-file .env src/server.py
+
 ```
 
 ## LangChain Tracing (LangSmith)
@@ -93,6 +96,8 @@ uv run pytest --agent-url http://localhost:9009
 uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom/custom_test.py
 uv run pytest --agent-url http://localhost:9009 --capture=no ./tests/custom/test_openrouter_nst.py
 uv run pytest --agent-url http://localhost:9010 --capture=no ./tests/custom/test_academic_cloud_terminal_bench.py
+
+uv run pytest --agent-url http://localhost:9010 --capture=no ./tests/custom/test_terminal_bench_loop.py
 ```
 
 ## Publishing

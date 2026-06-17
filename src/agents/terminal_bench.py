@@ -13,33 +13,46 @@ import subprocess
 from typing import Any
 
 import httpx
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langsmith import traceable, tracing_context
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
+from openai import RateLimitError
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
+from agents.tools.AgentInnerMessage import AgentInnerMessage
+from agents.tools.exec_request_checker import ExecRequestChecker
+from agents.tools.agent_memory import AgentMemory
+from agents.tools.response_format_checker import ResponseFormatChecker
 
 SYSTEM_PROMPT = """\
-You are a terminal agent solving command-line tasks in a live shell environment.
+You are a terminal agent solving complex command-line tasks in a live shell environment.
 
 You will receive messages as JSON. Respond ONLY with valid JSON — either:
   {"kind": "exec_request", "command": "<shell command>", "timeout": 30}
 or when the task is complete:
   {"kind": "final"}
+  
+The following rules apply to the JSON request you ought to send:
+- Only one execution request may be performed at a time, do not generate a response with two consecutive json requests
+- Do not include any text outside the JSON object
+- Do not send two commands in a row without waiting for the execution result and updating your history
+- Always ensure to end with the final command that completes the task, do not leave the task hanging without signaling completion
 
-Rules:
+
+Command Execution Rules:
 - Never use interactive commands (vim, nano, less, ssh -t, top, htop, etc.)
 - Always use non-interactive flags: apt-get -y, git --no-pager, python -c, etc.
 - Verify your work before sending final (run the test or check the output)
 - If a command fails, diagnose and try a different approach
-- Maximum 30 commands total
-- Do not include any text outside the JSON object
-- Do not send two commands in a row without waiting for the execution result and updating your history
-- Always ensure to end with the final command that completes the task, do not leave the task hanging without signaling completion
+- You can send a maximum of 30 commands total
+- If the stderr and stdout of a command are not relevant to your further succeeding (e.g. the output of apt-get install update), 
+then pipe the output to null, the output does not clog up the history
+- When possible, use filters to find the relevant information in log files or similar data 
+
 """
 
 
@@ -49,56 +62,47 @@ class TerminalBenchAgent:
     Maintains per-session conversation history across A2A turns.
     """
 
-    # Always interactive — no non-interactive mode exists
-    _ALWAYS_INTERACTIVE = frozenset({
-        "vim", "vi", "nvim", "nano", "emacs", "pico",
-        "less", "more", "man",
-        "top", "htop", "btop",
-        "ssh",
-        "mysql", "psql",
-    })
-
-    # Interactive only when called without arguments (bare REPL invocation)
-    _REPL_COMMANDS = frozenset({"python", "python3", "node", "irb", "iex"})
-
-    _DESTRUCTIVE_PATTERNS = [
-        r"rm\s+-[^\s]*r[^\s]*\s+/",   # rm -rf /
-        r"dd\s+.*of=/dev/[sh]d",       # dd onto block device
-        r":\(\)\s*\{.*\}",             # fork bomb
-        r"mkfs\.",                      # format filesystem
-        r">\s*/dev/[sh]d",             # write directly to block device
-    ]
-
     def __init__(self, model: str | None = None) -> None:
-        self._model = os.getenv("ACADEMICCLOUD_MODEL",
-                                "meta-llama-3.1-8b-instruct")
+        self._model = os.getenv("ACADEMICCLOUD_MODEL", "qwen3-coder-30b-a3b-instruct")
+        print("model:", self._model)
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
-        self._trace_enabled = False  # bool(os.getenv("LANGSMITH_API_KEY"))
+        self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
+        if not os.getenv("LANGSMITH_ENDPOINT"):
+            os.environ["LANGSMITH_ENDPOINT"] = "api.smith.langchain.com"
 
         self._llm: ChatOpenAI | None = None
-        self._history: list[Any] = []
+        self._memory = AgentMemory(SystemMessage(str(
+            SYSTEM_PROMPT)), short_term_window=30)
         self._turn_count = 0
-        self._max_turn_count = 10
-        self._max_syntax_retries = 3
+        self._max_turn_count = 30
+        self._max_syntax_retries = 5
         self._temperature = 0.7
 
-        self._boundary_logged = False
+        self._rate_limited = False
+        self._retry_log: list[dict] = []
+        self._backoff_enabled = os.getenv(
+            "ENABLE_RATE_LIMIT_BACKOFF", "true").lower() in ("1", "true", "yes", "True")
+        self._backoff_max_retries = int(os.getenv("BACKOFF_MAX_RETRIES", "4"))
+        self._backoff_base_delay = float(
+            os.getenv("BACKOFF_BASE_DELAY", "5.0"))
 
-    @traceable(name="green_purple_boundary", run_type="chain")
-    def _trace_boundary(self, input_text: str, response_text: str) -> dict[str, str]:
-        if self._boundary_logged:
-            return {"skipped": "true"}
-        self._boundary_logged = True
+    @traceable(name="agent_session", run_type="chain")
+    def _emit_session_trace(
+        self,
+        history: list[dict],
+        turn_count: int,
+        rate_limited: bool,
+        retry_log: list[dict],
+    ) -> dict:
         return {
-            "event": "trace_boundary",
-            "source": "green_agent",
-            "via": "terminal_bench",
-            "target": "green_agent",
-            "start_payload": input_text,
-            "end_payload": response_text,
+            "turn_count": turn_count,
+            "rate_limited": rate_limited,
+            "retry_count": len(retry_log),
+            "history_length": len(history),
+            "completed": not rate_limited,
         }
 
     def _create_llm(self) -> ChatOpenAI:
@@ -118,13 +122,39 @@ class TerminalBenchAgent:
         )
         return self._llm
 
-    @traceable(run_type="llm")
     async def _invoke_llm_async(self, messages: list[Any]) -> str:
-        """Invoke the LLM in a non-blocking way using asyncio."""
+        """Invoke the LLM. On 429, sets _rate_limited and re-raises.
+        If ENABLE_RATE_LIMIT_BACKOFF is set, retries with exponential backoff first."""
         llm = self._create_llm()
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
-        return result
+        max_attempts = self._backoff_max_retries if self._backoff_enabled else 1
+
+        for attempt in range(max_attempts):
+            try:
+                result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
+                return result
+            except RateLimitError as e:
+                if self._backoff_enabled and attempt < max_attempts - 1:
+                    delay = self._backoff_base_delay * (2 ** attempt)
+                    self._retry_log.append({
+                        "attempt": attempt + 1,
+                        "max_attempts": max_attempts,
+                        "delay_seconds": delay,
+                        "error": str(e)[:300],
+                    })
+                    print(
+                        f"Rate limit hit (attempt {attempt + 1}/{max_attempts}), retrying in {delay:.0f}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    self._rate_limited = True
+                    self._retry_log.append({
+                        "attempt": attempt + 1,
+                        "max_attempts": max_attempts,
+                        "exhausted": True,
+                        "error": str(e)[:300],
+                    })
+                    raise e
 
     def _get_academic_cloud_api_key(self):
         api_key = os.getenv("ACADEMICCLOUD_API_KEY")
@@ -137,15 +167,9 @@ class TerminalBenchAgent:
 
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
-        input_text = get_message_text(message)
+        
 
-        # this is just to not waist api calls
-        if (self._history is not None):
-            if (len(self._history) >= 2):
-                if (input_text == self._history[-2].content):
-                    print("Received duplicate message, skipping processing.")
-                    # or some other appropriate response or handling
-                    return json.dumps({"kind": "final"})
+        input_text = get_message_text(message)
 
         print(f"Received Message: {input_text}")
 
@@ -160,77 +184,48 @@ class TerminalBenchAgent:
         if input_dict.get("kind") == "task":
             print("Received initial task instruction:",
                   input_dict.get("instruction"))
-
-            self._history.append(HumanMessage(content=input_text))
+            self._memory.set_task(HumanMessage(content=input_text))
 
         elif input_dict.get("kind") == "exec_result":
             print("Received execution result, updating history for next turn.")
-            self._history.append(HumanMessage(content=input_text))
+            self._memory.add(HumanMessage(content=input_text))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
-        turn_info = f"\nCurrent turn: {self._turn_count + 1} of {self._max_turn_count}."                                                                                                                                                                                                   
-        messages = [SystemMessage(content=SYSTEM_PROMPT + turn_info)] + self._history     
+        messages = self._memory.build_messages()
+
+        print("history for llm consumption: ", messages)
 
         last_error: terminal_bench_format_exception | None = None
         for attempt in range(self._max_syntax_retries):
-            result = await self._invoke_llm_async(messages)
+            try:
+                result = await self._invoke_llm_async(messages)
+            except RateLimitError as e:
+                if self._rate_limited:
+                    print("Rate limit was previously hit; returning final.")
+                    return json.dumps({"kind": "final"})
+
             response_text = getattr(result, "content", str(result))
             print(f"LLM response (attempt {attempt + 1}): {response_text}")
 
             try:
-                response_text = self.postprocess_response(response_text, updater)
-                self._history.append(AIMessage(content=response_text))
+                response_text = self.postprocess_response(
+                    response_text, updater)
+
+                self._memory.add(AIMessage(content=response_text))
                 return response_text
+
             except terminal_bench_format_exception as e:
                 last_error = e
                 print(f"Format error on attempt {attempt + 1}: {e.message}")
                 messages.append(AIMessage(content=response_text))
-                messages.append(HumanMessage(content=json.dumps({
+                messages.append(AgentInnerMessage(content=json.dumps({
                     "kind": "error",
                     "error": e.message,
                 })))
 
         raise last_error
-
-    def _check_no_interactive_commands(self, command: str) -> None:
-        tokens = command.strip().split()
-        first_token = tokens[0].split("/")[-1]
-        if first_token in self._ALWAYS_INTERACTIVE:
-            raise terminal_bench_format_exception(
-                f"Interactive command not allowed: {first_token!r}. "
-                "Use non-interactive alternatives (e.g. python -c, git --no-pager)."
-            )
-        if first_token in self._REPL_COMMANDS and len(tokens) == 1:
-            raise terminal_bench_format_exception(
-                f"Bare REPL invocation not allowed: {first_token!r}. "
-                f"Use {first_token} -c '...' or {first_token} script.py instead."
-            )
-
-    def _check_no_destructive_commands(self, command: str) -> None:
-        for pattern in self._DESTRUCTIVE_PATTERNS:
-            if re.search(pattern, command):
-                raise terminal_bench_format_exception(
-                    f"Potentially destructive command blocked: {command!r}"
-                )
-
-    def _check_command_syntax(self, command: str) -> None:
-        if not command:
-            raise terminal_bench_format_exception("exec_request has an empty command")
-        self._check_no_interactive_commands(command)
-        self._check_no_destructive_commands(command)
-        result = subprocess.run(
-            ["bash", "-n"],
-            input=command,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            raise terminal_bench_format_exception(
-                f"Command has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
-            )
 
     def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
         """Post-process the LLM response to ensure it's valid JSON with expected structure."""
@@ -240,20 +235,12 @@ class TerminalBenchAgent:
         # reasonable (not rm -rf / or something) before
         # we send it back to the A2A server
 
-        try:
-            response_dict = json.loads(response_text)
-        except json.JSONDecodeError:
-            raise terminal_bench_format_exception(
-                "LLM response is not valid JSON: " + response_text)
+        response_dict = ResponseFormatChecker.check_agent_response_valid_json(
+            response_text)
 
         if response_dict.get("kind") == "exec_request":
-            command = response_dict.get("command", "")
-            self._check_command_syntax(command)
-            timeout = response_dict.get("timeout", 30)
-            if not isinstance(timeout, (int, float)) or timeout <= 0:
-                raise terminal_bench_format_exception(
-                    f"exec_request has invalid timeout: {timeout!r} (must be > 0)"
-                )
+            ExecRequestChecker.check_exec_request(response_dict)
+
         elif (response_dict.get("kind") == "final"):
             pass  # fine as well
         else:
@@ -263,12 +250,29 @@ class TerminalBenchAgent:
 
         return response_text  # valid response, pass through to A2A server
 
-    @traceable
     async def run(self, message: Message, updater: TaskUpdater) -> None:
 
         if self._turn_count < self._max_turn_count:
+            print("Run was called with the following message")
 
             response_result = await self.handle_request_iteration(message, updater)
+
+            is_terminal = (
+                response_result == json.dumps({"kind": "final"})
+                or self._rate_limited
+            )
+            if is_terminal:
+                history = [
+                    {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
+                    for m in self._memory.build_messages()
+                ]
+                with tracing_context(enabled=self._trace_enabled):
+                    self._emit_session_trace(
+                        history=history,
+                        turn_count=self._turn_count,
+                        rate_limited=self._rate_limited,
+                        retry_log=self._retry_log,
+                    )
 
             if (response_result == json.dumps({"kind": "final"})):
                 print("Agent signaled task completion.")
@@ -283,10 +287,6 @@ class TerminalBenchAgent:
 
             print(
                 f"Submitting response for turn {self._turn_count}: {response_msg}")
-
-            with tracing_context(enabled=self._trace_enabled):
-                self._trace_boundary(
-                    get_message_text(message), response_msg)
 
             # our task lives for only one turn, we need to complete it
             # otherwise the executor will respond with an empty message for us => error

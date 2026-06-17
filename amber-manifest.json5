@@ -7,6 +7,7 @@
       academiccloud_api_key: { type: "string", secret: true },
       tracing_key: { type: "string", secret: true },
       tracing_project: { type: "string", secret: false },
+      tracing_endpoint: { type: "string", secret: false}
     },
     required: ["academiccloud_api_key"],
     additionalProperties: false,
@@ -26,6 +27,7 @@
       ACADEMICCLOUD_API_KEY: "${config.academiccloud_api_key}",
       LANGSMITH_API_KEY: "${config.tracing_key}",
       LANGSMITH_PROJECT: "${config.tracing_project}",
+      LANGSMITH_ENDPOINT: "${config.tracing_endpoint}",
     },
 
     network: {

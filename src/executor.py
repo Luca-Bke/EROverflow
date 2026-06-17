@@ -14,7 +14,6 @@ from a2a.utils import (
 )
 
 from agent import Agent
-from langsmith import traceable, tracing_context
 
 
 TERMINAL_STATES = {
@@ -29,7 +28,6 @@ class Executor(AgentExecutor):
     def __init__(self):
         self.agents: dict[str, Agent] = {} # context_id to agent instance
 
-    @traceable
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         msg = context.message
         if not msg:
