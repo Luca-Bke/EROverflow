@@ -66,6 +66,9 @@ class ExecRequestChecker():
                 f"command in exec request has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"
             )
 
+    MAX_TIMEOUT = 300
+    DEFAULT_TIMEOUT = 300
+
     def check_timeout(timeout):
         if not isinstance(timeout, (int, float)) or timeout <= 0:
             raise terminal_bench_format_exception(
@@ -76,5 +79,11 @@ class ExecRequestChecker():
         command = request_dict.get("command", "")
         ExecRequestChecker.check_command_syntax(command)
 
-        timeout = request_dict.get("timeout", 30)
+        # Default a missing timeout, then validate and clamp to [1, MAX_TIMEOUT].
+        # The clamped value is written back so the outgoing exec_request carries
+        # a build-safe timeout even if the model under-specified it.
+        if "timeout" not in request_dict or request_dict.get("timeout") is None:
+            request_dict["timeout"] = ExecRequestChecker.DEFAULT_TIMEOUT
+        timeout = request_dict["timeout"]
         ExecRequestChecker.check_timeout(timeout)
+        request_dict["timeout"] = min(int(timeout), ExecRequestChecker.MAX_TIMEOUT)

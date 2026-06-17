@@ -279,8 +279,11 @@ class TerminalBenchAgent:
                     })))
                     continue
 
-            self._memory.add(AIMessage(content=response_text))
-            return response_text
+            # For exec_request, send the normalised dict (clamped timeout) rather
+            # than the raw model text. final passes through unchanged.
+            outgoing = json.dumps(response_dict) if kind == "exec_request" else response_text
+            self._memory.add(AIMessage(content=outgoing))
+            return outgoing
 
         raise last_error
 
