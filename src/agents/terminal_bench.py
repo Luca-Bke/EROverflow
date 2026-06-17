@@ -299,6 +299,9 @@ class TerminalBenchAgent:
                 plan_turns += 1
                 messages = self._memory.build_messages()
                 if plan_turns >= self._max_plan_turns:
+                    # Past the budget keep storing, but charge the syntax budget so a
+                    # model that only ever plans cannot loop forever.
+                    syntax_attempts += 1
                     messages.append(AgentInnerMessage(content=(
                         "You have planned enough. Now issue a single exec_request "
                         "for the first step of your plan.")))
@@ -357,49 +360,55 @@ class TerminalBenchAgent:
 
         return response_dict
 
+    @staticmethod
+    def _is_final(response_result: str) -> bool:
+        try:
+            return json.loads(response_result).get("kind") == "final"
+        except (json.JSONDecodeError, AttributeError, ValueError):
+            return False
+
     async def run(self, message: Message, updater: TaskUpdater) -> None:
+        # Out of turn budget: send a clean final so the executor never has to
+        # respond with an empty message (which it treats as an error).
+        if self._turn_count >= self._max_turn_count:
+            print("Max turn count reached; sending final.")
+            final_msg = json.dumps({"kind": "final"})
+            await updater.complete(updater.new_agent_message(
+                parts=[Part(root=TextPart(text=final_msg))]))
+            return
 
-        if self._turn_count < self._max_turn_count:
-            print("Run was called with the following message")
+        print("Run was called with the following message")
 
-            response_result = await self.handle_request_iteration(message, updater)
+        response_result = await self.handle_request_iteration(message, updater)
 
-            is_terminal = (
-                response_result == json.dumps({"kind": "final"})
-                or self._rate_limited
-            )
-            if is_terminal:
-                history = [
-                    {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
-                    for m in self._memory.build_messages()
-                ]
-                with tracing_context(enabled=self._trace_enabled):
-                    self._emit_session_trace(
-                        history=history,
-                        turn_count=self._turn_count,
-                        rate_limited=self._rate_limited,
-                        retry_log=self._retry_log,
-                    )
+        is_final = self._is_final(response_result)
 
-            if (response_result == json.dumps({"kind": "final"})):
-                print("Agent signaled task completion.")
-                # signal completion to A2A server
-                updater.complete(updater.new_agent_message(
-                    [Part(root=TextPart(text=response_result))]))
+        if is_final or self._rate_limited:
+            history = [
+                {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
+                for m in self._memory.build_messages()
+            ]
+            with tracing_context(enabled=self._trace_enabled):
+                self._emit_session_trace(
+                    history=history,
+                    turn_count=self._turn_count,
+                    rate_limited=self._rate_limited,
+                    retry_log=self._retry_log,
+                )
 
-            # send agent response back to A2A server
-            response_msg = updater.new_agent_message(
-                parts=[Part(root=TextPart(text=response_result))]
-            )
+        if is_final:
+            print("Agent signaled task completion.")
 
-            print(
-                f"Submitting response for turn {self._turn_count}: {response_msg}")
+        # Send the agent response back to the A2A server. A task lives for only
+        # one turn, so we must complete it exactly once — otherwise the executor
+        # responds with an empty message and errors.
+        response_msg = updater.new_agent_message(
+            parts=[Part(root=TextPart(text=response_result))]
+        )
+        print(f"Submitting response for turn {self._turn_count}: {response_msg}")
+        await updater.complete(response_msg)
 
-            # our task lives for only one turn, we need to complete it
-            # otherwise the executor will respond with an empty message for us => error
-            await updater.complete(response_msg)
-
-            self._turn_count += 1
+        self._turn_count += 1
 
 
 __all__ = ["TerminalBenchAgent"]

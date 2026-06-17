@@ -261,9 +261,19 @@ async def test_task_triggers_recon_without_llm(agent):
     invoke_mock.assert_not_called()
 
 
+# ── #4 run() out-of-budget sends a single final ────────────────────────────────
 
+async def test_run_sends_final_when_out_of_turns(agent):
+    agent._turn_count = agent._max_turn_count  # exhausted
 
+    updater = MagicMock()
+    updater.complete = AsyncMock()
+    updater.new_agent_message = MagicMock(return_value="final-msg")
 
     task_payload = json.dumps({"kind": "task", "instruction": "x"})
     await agent.run(_make_message(task_payload), updater)
 
+    updater.complete.assert_awaited_once()
+    # The completed message was built from a final payload.
+    sent_text = updater.new_agent_message.call_args.kwargs["parts"][0].root.text
+    assert json.loads(sent_text)["kind"] == "final"
