@@ -26,6 +26,7 @@
       ACADEMICCLOUD_API_KEY: "${config.academiccloud_api_key}",
       LANGSMITH_API_KEY: "${config.tracing_key}",
       LANGSMITH_PROJECT: "${config.tracing_project}",
+      LANGSMITH_ENDPOINT: "${config.tracing_endpoint}",
     },
 
     network: {

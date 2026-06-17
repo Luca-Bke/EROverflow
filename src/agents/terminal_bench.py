@@ -66,9 +66,11 @@ class TerminalBenchAgent:
         print("model:", self._model)
         self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
                                    "https://chat-ai.academiccloud.de/v1")
-        self._trace_enabled = False  # bool(os.getenv("LANGSMITH_API_KEY"))
+        self._trace_enabled = bool(os.getenv("LANGSMITH_TRACING"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
+        if not os.getenv("LANGSMITH_ENDPOINT"):
+            os.environ["LANGSMITH_ENDPOINT"] = "api.smith.langchain.com"
 
         self._llm: ChatOpenAI | None = None
         self._memory = AgentMemory(SystemMessage(str(
