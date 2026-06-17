@@ -71,6 +71,15 @@ then pipe the output to null, the output does not clog up the history
 # Head+tail budget (chars) for stdout/stderr of a single exec_result kept in memory.
 MAX_OUTPUT_CHARS = 6000
 
+# Fixed turn-0 reconnaissance: grounds every later decision in the real
+# environment. Sent deterministically (no LLM call) on the first task message.
+RECON_CMD = (
+    "echo '=== PWD ===' && pwd && "
+    "echo '=== LS ===' && ls -la && "
+    "echo '=== FILES ===' && find . -maxdepth 2 -not -path '*/.*' -type f | sort | head -40 && "
+    "echo '=== GIT ===' && (git log --oneline -5 2>/dev/null || echo '(no git)') && "
+    "echo '=== TOOLS ===' && (which python3 pip git curl make 2>/dev/null | head -10 || true)"
+)
 
 
 class TerminalBenchAgent:
@@ -230,6 +239,12 @@ class TerminalBenchAgent:
             print("Received initial task instruction:",
                   input_dict.get("instruction"))
             self._memory.set_task(HumanMessage(content=input_text))
+            # Turn 0: deterministic recon — no LLM call. Grounds the agent in the
+            # real environment before it plans or acts.
+            recon = json.dumps(
+                {"kind": "exec_request", "command": RECON_CMD, "timeout": 60})
+            self._memory.add(AIMessage(content=recon))
+            return recon
 
         elif input_dict.get("kind") == "exec_result":
             print("Received execution result, updating history for next turn.")

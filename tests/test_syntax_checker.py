@@ -206,11 +206,11 @@ async def test_retry_succeeds_on_second_attempt(agent):
     agent._invoke_llm_async = fake_invoke
     _mock_checker(agent, approved=True)
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
-    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
 
     assert result == good
     assert call_count == 2
@@ -225,9 +225,9 @@ async def test_retry_fails_after_max_attempts(agent):
     agent._invoke_llm_async = fake_invoke
     _mock_checker(agent, approved=False)
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
     with pytest.raises(terminal_bench_format_exception):
-        await agent.handle_request_iteration(_make_message(task_payload), updater)
+        await agent.handle_request_iteration(_make_message(exec_payload), updater)

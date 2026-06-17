@@ -114,11 +114,11 @@ async def test_plan_turn_is_internal_then_exec_sent(agent):
     agent._invoke_llm_async = fake_invoke
     _mock_checker(agent, approved=True)
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
-    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
 
     # The plan is internal: it must NOT be the response sent to green.
     assert result == exec_req
@@ -148,11 +148,11 @@ async def test_plan_turn_budget_does_not_exhaust_syntax_retries(agent):
     agent._invoke_llm_async = fake_invoke
     _mock_checker(agent, approved=True)
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
-    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
     assert result == exec_req
 
 
@@ -172,11 +172,11 @@ async def test_checker_engaged_only_after_first_syntax_failure(agent):
         return_value=CheckVerdict(approved=True, feedback=""))
     agent._checker_agent.review = review_mock
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
-    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
 
     assert result == good
     # First response was already valid → checker must NOT have been called.
@@ -207,13 +207,15 @@ async def test_checker_rejection_blocks_then_approval_sends(agent):
         CheckVerdict(approved=True, feedback=""),
     ])
 
-    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
     updater = MagicMock()
     updater.start_work = AsyncMock()
 
-    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
     assert result == good
     assert call_count == 3
+
+
 # ── #2 exec_result output truncation ───────────────────────────────────────────
 
 def test_truncate_field_keeps_head_and_tail(agent):
@@ -240,4 +242,28 @@ def test_truncate_exec_result_passes_small_output(agent):
     out = agent._truncate_exec_result(payload)
     assert json.loads(out)["stdout"] == "all good"
 
+
+# ── #5 deterministic recon turn 0 ──────────────────────────────────────────────
+
+async def test_task_triggers_recon_without_llm(agent):
+    invoke_mock = AsyncMock()
+    agent._invoke_llm_async = invoke_mock
+
+    task_payload = json.dumps({"kind": "task", "instruction": "do something"})
+    updater = MagicMock()
+    updater.start_work = AsyncMock()
+
+    result = await agent.handle_request_iteration(_make_message(task_payload), updater)
+
+    parsed = json.loads(result)
+    assert parsed["kind"] == "exec_request"
+    assert parsed["command"] == RECON_CMD
+    invoke_mock.assert_not_called()
+
+
+
+
+
+    task_payload = json.dumps({"kind": "task", "instruction": "x"})
+    await agent.run(_make_message(task_payload), updater)
 
