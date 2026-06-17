@@ -27,20 +27,33 @@ from agents.tools.AgentInnerMessage import AgentInnerMessage
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.agent_memory import AgentMemory
 from agents.tools.response_format_checker import ResponseFormatChecker
+from agents.checker_agent import CheckerAgent
 
 SYSTEM_PROMPT = """\
 You are a terminal agent solving complex command-line tasks in a live shell environment.
 
-You will receive messages as JSON. Respond ONLY with valid JSON — either:
-  {"kind": "exec_request", "command": "<shell command>", "timeout": 30}
+You will receive messages as JSON. Respond ONLY with a SINGLE valid JSON object — one of:
+  {"kind": "exec_request", "command": "<shell command>", "timeout": 300}
+or to organise your work into a plan you will work through step by step:
+  {"kind": "plan", "steps": ["step 1", "step 2", "..."]}
 or when the task is complete:
   {"kind": "final"}
-  
-The following rules apply to the JSON request you ought to send:
-- Only one execution request may be performed at a time, do not generate a response with two consecutive json requests
-- Do not include any text outside the JSON object
-- Do not send two commands in a row without waiting for the execution result and updating your history
-- Always ensure to end with the final command that completes the task, do not leave the task hanging without signaling completion
+
+CRITICAL — exactly ONE JSON object per response:
+- Respond with EXACTLY ONE JSON object. NEVER emit several JSON objects in one response.
+- NEVER send a sequence of commands at once. Send only the FIRST command, then WAIT for its
+  execution result before issuing the next one.
+- Do not include any text outside the JSON object.
+- Always end the task with {"kind": "final"} once it is complete — do not leave it hanging.
+
+Planning:
+- You may send {"kind": "plan", "steps": [...]} to record or update a plan. A plan is internal:
+  it is NOT executed in the shell, it is stored and shown back to you so you can work through it
+  step by step. After sending a plan, issue the first exec_request of that plan.
+
+Format checking:
+- A checker validates your response format. If your response is malformed (e.g. multiple commands
+  in one response), it returns concrete feedback. Read it and reply with a single, corrected JSON object.
 
 
 Command Execution Rules:
@@ -75,10 +88,12 @@ class TerminalBenchAgent:
 
         self._llm: ChatOpenAI | None = None
         self._memory = AgentMemory(SystemMessage(str(
-            SYSTEM_PROMPT)), short_term_window=30)
+            SYSTEM_PROMPT)), short_term_window=10)
+        self._checker_agent = CheckerAgent()
         self._turn_count = 0
         self._max_turn_count = 30
         self._max_syntax_retries = 5
+        self._max_plan_turns = 3
         self._temperature = 0.7
 
         self._rate_limited = False
@@ -198,57 +213,101 @@ class TerminalBenchAgent:
         print("history for llm consumption: ", messages)
 
         last_error: terminal_bench_format_exception | None = None
-        for attempt in range(self._max_syntax_retries):
+        syntax_attempts = 0
+        plan_turns = 0
+        checker_engaged = False
+
+        while syntax_attempts < self._max_syntax_retries:
             try:
                 result = await self._invoke_llm_async(messages)
-            except RateLimitError as e:
+            except RateLimitError:
                 if self._rate_limited:
                     print("Rate limit was previously hit; returning final.")
                     return json.dumps({"kind": "final"})
+                raise
 
             response_text = getattr(result, "content", str(result))
-            print(f"LLM response (attempt {attempt + 1}): {response_text}")
+            print(f"LLM response (syntax_attempt {syntax_attempts + 1}): {response_text}")
 
+            # ── Static syntax checker — always the first, cheap gate ──────────
             try:
-                response_text = self.postprocess_response(
-                    response_text, updater)
-
-                self._memory.add(AIMessage(content=response_text))
-                return response_text
-
+                response_dict = self.validate_response(response_text)
             except terminal_bench_format_exception as e:
                 last_error = e
-                print(f"Format error on attempt {attempt + 1}: {e.message}")
+                syntax_attempts += 1
+                checker_engaged = True  # engage the checker agent from now on
+                print(f"Syntax error (attempt {syntax_attempts}): {e.message}")
+                verdict = await self._checker_agent.review(response_text, e.message)
                 messages.append(AIMessage(content=response_text))
                 messages.append(AgentInnerMessage(content=json.dumps({
                     "kind": "error",
-                    "error": e.message,
+                    "error": verdict.feedback or e.message,
                 })))
+                continue
+
+            kind = response_dict.get("kind")
+
+            # ── Internal plan turn — stored, never sent to the green agent ────
+            if kind == "plan":
+                self._memory.set_plan(response_dict)
+                self._memory.add(AIMessage(content=response_text))
+                plan_turns += 1
+                messages = self._memory.build_messages()
+                if plan_turns >= self._max_plan_turns:
+                    messages.append(AgentInnerMessage(content=(
+                        "You have planned enough. Now issue a single exec_request "
+                        "for the first step of your plan.")))
+                else:
+                    messages.append(AgentInnerMessage(content=(
+                        "Plan stored. Now issue a single exec_request for the first "
+                        "step, or update the plan.")))
+                continue
+
+            # ── exec_request / final passed syntax — checker is the send gate ─
+            # Cheap path: if the checker was never engaged (first response valid),
+            # skip the checker entirely. Once engaged, the checker approves sends.
+            # If the checker LLM is unavailable, fall open: syntax already passed.
+            if checker_engaged:
+                verdict = await self._checker_agent.review(response_text, None)
+                if not verdict.approved and not verdict.error:
+                    syntax_attempts += 1
+                    print(f"Checker rejected (attempt {syntax_attempts}): {verdict.feedback}")
+                    messages.append(AIMessage(content=response_text))
+                    messages.append(AgentInnerMessage(content=json.dumps({
+                        "kind": "error",
+                        "error": verdict.feedback,
+                    })))
+                    continue
+
+            self._memory.add(AIMessage(content=response_text))
+            return response_text
 
         raise last_error
 
-    def postprocess_response(self, response_text: str, updater: TaskUpdater) -> str:
-        """Post-process the LLM response to ensure it's valid JSON with expected structure."""
+    def validate_response(self, response_text: str) -> dict:
+        """Static syntax validation. Returns the parsed dict or raises.
 
-        # here we should have some sanity checks to ensure the response is
-        # valid JSON with the expected structure and the command looks
-        # reasonable (not rm -rf / or something) before
-        # we send it back to the A2A server
-
+        Recognises three kinds: exec_request, final, plan. exec_request is
+        additionally checked for shell-syntax/interactive/destructive issues.
+        """
         response_dict = ResponseFormatChecker.check_agent_response_valid_json(
             response_text)
 
-        if response_dict.get("kind") == "exec_request":
+        kind = response_dict.get("kind")
+        if kind == "exec_request":
             ExecRequestChecker.check_exec_request(response_dict)
-
-        elif (response_dict.get("kind") == "final"):
-            pass  # fine as well
+        elif kind == "final":
+            pass
+        elif kind == "plan":
+            steps = response_dict.get("steps") or response_dict.get("plan")
+            if not steps:
+                raise terminal_bench_format_exception(
+                    "plan response must include a non-empty 'steps' list: " + response_text)
         else:
-            # error handling / break to rerun or fix logic
             raise terminal_bench_format_exception(
                 "LLM response JSON missing 'kind' field or has unknown kind: " + response_text)
 
-        return response_text  # valid response, pass through to A2A server
+        return response_dict
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
 

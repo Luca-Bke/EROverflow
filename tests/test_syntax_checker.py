@@ -70,60 +70,72 @@ def test_empty_command_in_exec_request_raises(agent):
     payload = json.dumps(
         {"kind": "exec_request", "command": "", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
 def test_missing_command_field_raises(agent):
     payload = json.dumps({"kind": "exec_request", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
-# --- postprocess_response ---
+# --- validate_response ---
 
 def test_valid_exec_request_passes(agent):
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hello", "timeout": 30})
-    result = agent.postprocess_response(payload, updater=None)
-    assert result == payload
+    result = agent.validate_response(payload)
+    assert result["kind"] == "exec_request"
 
 
 def test_invalid_command_in_exec_request_raises(agent):
     payload = json.dumps(
         {"kind": "exec_request", "command": "if then done", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
 def test_final_passes(agent):
     payload = json.dumps({"kind": "final"})
-    result = agent.postprocess_response(payload, updater=None)
-    assert result == payload
+    result = agent.validate_response(payload)
+    assert result["kind"] == "final"
+
+
+def test_plan_passes(agent):
+    payload = json.dumps({"kind": "plan", "steps": ["explore", "build", "verify"]})
+    result = agent.validate_response(payload)
+    assert result["kind"] == "plan"
+
+
+def test_empty_plan_raises(agent):
+    payload = json.dumps({"kind": "plan", "steps": []})
+    with pytest.raises(terminal_bench_format_exception, match="non-empty 'steps'"):
+        agent.validate_response(payload)
 
 
 def test_invalid_json_raises(agent):
     with pytest.raises(terminal_bench_format_exception, match="not valid JSON"):
-        agent.postprocess_response("not json", updater=None)
+        agent.validate_response("not json")
 
 
 def test_unknown_kind_raises(agent):
     payload = json.dumps({"kind": "unknown_thing"})
     with pytest.raises(terminal_bench_format_exception, match="unknown kind"):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
 def test_invalid_timeout_raises(agent):
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hi", "timeout": -1})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
 def test_zero_timeout_raises(agent):
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hi", "timeout": 0})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        agent.postprocess_response(payload, updater=None)
+        agent.validate_response(payload)
 
 
 # --- retry logic in handle_request_iteration ---
@@ -135,6 +147,13 @@ def _make_message(text: str) -> Message:
         parts=[Part(root=TextPart(kind="text", text=text))],
         message_id="test-id",
     )
+
+
+def _mock_checker(agent, approved: bool = True, feedback: str = "send one command"):
+    """Replace the checker agent with a deterministic stub (no real LLM)."""
+    from agents.checker_agent import CheckVerdict
+    agent._checker_agent.review = AsyncMock(
+        return_value=CheckVerdict(approved=approved, feedback=feedback))
 
 
 async def test_retry_succeeds_on_second_attempt(agent):
@@ -152,6 +171,7 @@ async def test_retry_succeeds_on_second_attempt(agent):
         return mock
 
     agent._invoke_llm_async = fake_invoke
+    _mock_checker(agent, approved=True)
 
     task_payload = json.dumps({"kind": "task", "instruction": "do something"})
     updater = MagicMock()
@@ -170,6 +190,7 @@ async def test_retry_fails_after_max_attempts(agent):
         return mock
 
     agent._invoke_llm_async = fake_invoke
+    _mock_checker(agent, approved=False)
 
     task_payload = json.dumps({"kind": "task", "instruction": "do something"})
     updater = MagicMock()
