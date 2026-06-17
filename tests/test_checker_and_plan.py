@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from agents.terminal_bench import TerminalBenchAgent
+from agents.terminal_bench import TerminalBenchAgent, RECON_CMD, MAX_OUTPUT_CHARS
 from agents.checker_agent import CheckerAgent, CheckVerdict
 from agents.tools.agent_memory import AgentMemory
 from a2a.types import Message, Part, TextPart
@@ -214,3 +214,30 @@ async def test_checker_rejection_blocks_then_approval_sends(agent):
     result = await agent.handle_request_iteration(_make_message(task_payload), updater)
     assert result == good
     assert call_count == 3
+# ── #2 exec_result output truncation ───────────────────────────────────────────
+
+def test_truncate_field_keeps_head_and_tail(agent):
+    big = "A" * 1000 + "B" * 20000 + "Z" * 1000
+    out = agent._truncate_field(big, budget=6000)
+    assert len(out) < len(big)
+    assert out.startswith("A")
+    assert out.endswith("Z")
+    assert "truncated" in out
+
+
+def test_truncate_exec_result_bounds_stdout(agent):
+    payload = json.dumps(
+        {"kind": "exec_result", "stdout": "x" * 50000, "exit_code": 0})
+    out = agent._truncate_exec_result(payload)
+    data = json.loads(out)
+    assert len(data["stdout"]) <= MAX_OUTPUT_CHARS + 100  # + elision marker
+    assert data["exit_code"] == 0
+
+
+def test_truncate_exec_result_passes_small_output(agent):
+    payload = json.dumps(
+        {"kind": "exec_result", "stdout": "all good", "exit_code": 0})
+    out = agent._truncate_exec_result(payload)
+    assert json.loads(out)["stdout"] == "all good"
+
+

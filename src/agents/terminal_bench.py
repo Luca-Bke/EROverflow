@@ -68,6 +68,10 @@ then pipe the output to null, the output does not clog up the history
 
 """
 
+# Head+tail budget (chars) for stdout/stderr of a single exec_result kept in memory.
+MAX_OUTPUT_CHARS = 6000
+
+
 
 class TerminalBenchAgent:
     """Purple agent for Terminal Bench 2.0.
@@ -180,6 +184,32 @@ class TerminalBenchAgent:
 
         return api_key
 
+    @staticmethod
+    def _truncate_field(value: str, budget: int = MAX_OUTPUT_CHARS) -> str:
+        """Keep the head and tail of a long string, eliding the middle."""
+        if len(value) <= budget:
+            return value
+        half = budget // 2
+        elided = len(value) - 2 * half
+        return f"{value[:half]}\n…[{elided} chars truncated]…\n{value[-half:]}"
+
+    def _truncate_exec_result(self, input_text: str) -> str:
+        """Bound stdout/stderr of an exec_result before it enters memory.
+
+        A single apt-get/pip/training command can emit tens of thousands of
+        lines; storing that verbatim blows the rolling context window and can
+        crash the A2A gateway. We keep head+tail of each stream.
+        """
+        try:
+            data = json.loads(input_text)
+        except (json.JSONDecodeError, ValueError):
+            return self._truncate_field(input_text)
+
+        for field in ("stdout", "stderr", "output"):
+            if isinstance(data.get(field), str):
+                data[field] = self._truncate_field(data[field])
+        return json.dumps(data)
+
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         
@@ -203,7 +233,7 @@ class TerminalBenchAgent:
 
         elif input_dict.get("kind") == "exec_result":
             print("Received execution result, updating history for next turn.")
-            self._memory.add(HumanMessage(content=input_text))
+            self._memory.add(HumanMessage(content=self._truncate_exec_result(input_text)))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
