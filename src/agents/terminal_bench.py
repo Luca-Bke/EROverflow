@@ -55,16 +55,23 @@ Format checking:
 - A checker validates your response format. If your response is malformed (e.g. multiple commands
   in one response), it returns concrete feedback. Read it and reply with a single, corrected JSON object.
 
+Workflow:
+- Turn 0 is an automatic reconnaissance command (pwd/ls/find/git/tools). Read its output.
+- Then send a {"kind": "plan", ...} grounded in what recon revealed, and work through it step by step.
 
 Command Execution Rules:
 - Never use interactive commands (vim, nano, less, ssh -t, top, htop, etc.)
 - Always use non-interactive flags: apt-get -y, git --no-pager, python -c, etc.
-- Verify your work before sending final (run the test or check the output)
+- Bound the output of long/noisy commands so they do not flood your context:
+    apt-get install -y X > /tmp/log 2>&1; tail -n 40 /tmp/log
+    pip install --break-system-packages X 2>&1 | tail -3
+- VERIFY before you finish: actually run the task's test/verification (e.g. the test harness,
+  the smoke test, or a grep check) and confirm it passes BEFORE sending {"kind": "final"}.
 - If a command fails, diagnose and try a different approach
 - You can send a maximum of 30 commands total
-- If the stderr and stdout of a command are not relevant to your further succeeding (e.g. the output of apt-get install update), 
+- If the stderr and stdout of a command are not relevant to your further succeeding (e.g. the output of apt-get install update),
 then pipe the output to null, the output does not clog up the history
-- When possible, use filters to find the relevant information in log files or similar data 
+- When possible, use filters to find the relevant information in log files or similar data
 
 """
 
