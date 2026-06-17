@@ -4,6 +4,7 @@ import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.exec_request_checker import ExecRequestChecker
+from agents.tools.response_format_checker import ResponseFormatChecker
 from a2a.types import Message, Part, TextPart
 
 
@@ -136,6 +137,38 @@ def test_zero_timeout_raises(agent):
         {"kind": "exec_request", "command": "echo hi", "timeout": 0})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
         agent.validate_response(payload)
+
+
+# --- ResponseFormatChecker deterministic normalisation ---
+
+def test_clean_json_passes_through():
+    payload = json.dumps({"kind": "exec_request", "command": "ls", "timeout": 30})
+    assert ResponseFormatChecker.check_agent_response_valid_json(payload)["command"] == "ls"
+
+
+def test_think_wrapped_json_is_stripped():
+    raw = '<think>let me plan this carefully</think>\n{"kind": "final"}'
+    result = ResponseFormatChecker.check_agent_response_valid_json(raw)
+    assert result["kind"] == "final"
+
+
+def test_multiline_think_then_exec_request():
+    raw = ('<think>\nstep 1\nstep 2\n</think>'
+           '{"kind": "exec_request", "command": "echo hi", "timeout": 30}')
+    result = ResponseFormatChecker.check_agent_response_valid_json(raw)
+    assert result["kind"] == "exec_request"
+
+
+def test_multiple_objects_raise_send_first():
+    raw = ('{"kind": "exec_request", "command": "echo a", "timeout": 30}\n'
+           '{"kind": "exec_request", "command": "echo b", "timeout": 30}')
+    with pytest.raises(terminal_bench_format_exception, match="Multiple JSON objects"):
+        ResponseFormatChecker.check_agent_response_valid_json(raw)
+
+
+def test_garbage_raises_not_valid_json():
+    with pytest.raises(terminal_bench_format_exception, match="not valid JSON"):
+        ResponseFormatChecker.check_agent_response_valid_json("totally not json")
 
 
 # --- retry logic in handle_request_iteration ---
