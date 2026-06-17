@@ -20,6 +20,7 @@ from langsmith import traceable, tracing_context
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
+from openai import RateLimitError
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.AgentInnerMessage import AgentInnerMessage
@@ -80,26 +81,28 @@ class TerminalBenchAgent:
         self._max_syntax_retries = 5
         self._temperature = 0.7
 
-        self._boundary_logged = False
         self._rate_limited = False
+        self._retry_log: list[dict] = []
         self._backoff_enabled = os.getenv(
             "ENABLE_RATE_LIMIT_BACKOFF", "true").lower() in ("1", "true", "yes", "True")
         self._backoff_max_retries = int(os.getenv("BACKOFF_MAX_RETRIES", "4"))
         self._backoff_base_delay = float(
             os.getenv("BACKOFF_BASE_DELAY", "5.0"))
 
-    @traceable(name="green_purple_boundary", run_type="chain")
-    def _trace_boundary(self, input_text: str, response_text: str) -> dict[str, str]:
-        if self._boundary_logged:
-            return {"skipped": "true"}
-        self._boundary_logged = True
+    @traceable(name="agent_session", run_type="chain")
+    def _emit_session_trace(
+        self,
+        history: list[dict],
+        turn_count: int,
+        rate_limited: bool,
+        retry_log: list[dict],
+    ) -> dict:
         return {
-            "event": "trace_boundary",
-            "source": "green_agent",
-            "via": "terminal_bench",
-            "target": "green_agent",
-            "start_payload": input_text,
-            "end_payload": response_text,
+            "turn_count": turn_count,
+            "rate_limited": rate_limited,
+            "retry_count": len(retry_log),
+            "history_length": len(history),
+            "completed": not rate_limited,
         }
 
     def _create_llm(self) -> ChatOpenAI:
@@ -119,7 +122,6 @@ class TerminalBenchAgent:
         )
         return self._llm
 
-    @traceable(run_type="llm")
     async def _invoke_llm_async(self, messages: list[Any]) -> str:
         """Invoke the LLM. On 429, sets _rate_limited and re-raises.
         If ENABLE_RATE_LIMIT_BACKOFF is set, retries with exponential backoff first."""
@@ -131,22 +133,28 @@ class TerminalBenchAgent:
             try:
                 result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
                 return result
-            except Exception as e:
-                err_str = str(e).lower()
-                is_rate_limit = (
-                    "429" in str(e)
-                    or "rate limit" in err_str
-                    or getattr(e, "status_code", None) == 429
-                )
-                if is_rate_limit and self._backoff_enabled and attempt < max_attempts - 1:
+            except RateLimitError as e:
+                if self._backoff_enabled and attempt < max_attempts - 1:
                     delay = self._backoff_base_delay * (2 ** attempt)
+                    self._retry_log.append({
+                        "attempt": attempt + 1,
+                        "max_attempts": max_attempts,
+                        "delay_seconds": delay,
+                        "error": str(e)[:300],
+                    })
                     print(
                         f"Rate limit hit (attempt {attempt + 1}/{max_attempts}), retrying in {delay:.0f}s...")
                     await asyncio.sleep(delay)
                     continue
-                if is_rate_limit:
+                else:
                     self._rate_limited = True
-                raise e
+                    self._retry_log.append({
+                        "attempt": attempt + 1,
+                        "max_attempts": max_attempts,
+                        "exhausted": True,
+                        "error": str(e)[:300],
+                    })
+                    raise e
 
     def _get_academic_cloud_api_key(self):
         api_key = os.getenv("ACADEMICCLOUD_API_KEY")
@@ -159,9 +167,7 @@ class TerminalBenchAgent:
 
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
-        if self._rate_limited:
-            print("Rate limit was previously hit; returning final immediately.")
-            return json.dumps({"kind": "final"})
+        
 
         input_text = get_message_text(message)
 
@@ -195,11 +201,10 @@ class TerminalBenchAgent:
         for attempt in range(self._max_syntax_retries):
             try:
                 result = await self._invoke_llm_async(messages)
-            except Exception as e:
+            except RateLimitError as e:
                 if self._rate_limited:
-                    print("API rate limit exhausted; signaling final.")
-                    return json.dumps({"error": "API Rate limit exceeded"})
-                raise e
+                    print("Rate limit was previously hit; returning final.")
+                    return json.dumps({"kind": "final"})
 
             response_text = getattr(result, "content", str(result))
             print(f"LLM response (attempt {attempt + 1}): {response_text}")
@@ -245,13 +250,29 @@ class TerminalBenchAgent:
 
         return response_text  # valid response, pass through to A2A server
 
-    @traceable
     async def run(self, message: Message, updater: TaskUpdater) -> None:
 
         if self._turn_count < self._max_turn_count:
             print("Run was called with the following message")
 
             response_result = await self.handle_request_iteration(message, updater)
+
+            is_terminal = (
+                response_result == json.dumps({"kind": "final"})
+                or self._rate_limited
+            )
+            if is_terminal:
+                history = [
+                    {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
+                    for m in self._memory.build_messages()
+                ]
+                with tracing_context(enabled=self._trace_enabled):
+                    self._emit_session_trace(
+                        history=history,
+                        turn_count=self._turn_count,
+                        rate_limited=self._rate_limited,
+                        retry_log=self._retry_log,
+                    )
 
             if (response_result == json.dumps({"kind": "final"})):
                 print("Agent signaled task completion.")
@@ -266,10 +287,6 @@ class TerminalBenchAgent:
 
             print(
                 f"Submitting response for turn {self._turn_count}: {response_msg}")
-
-            with tracing_context(enabled=self._trace_enabled):
-                self._trace_boundary(
-                    get_message_text(message), response_msg)
 
             # our task lives for only one turn, we need to complete it
             # otherwise the executor will respond with an empty message for us => error
