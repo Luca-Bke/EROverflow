@@ -7,25 +7,21 @@ with final. State persists across turns via the shared Agent instance per contex
 
 import json
 import os
-import asyncio
-import re
-import subprocess
-from typing import Any
-
-import httpx
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langsmith import traceable, tracing_context
 
 from a2a.server.tasks import TaskUpdater
-from a2a.types import Message, TaskState, Part, TextPart
+from a2a.types import Message, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
 from openai import RateLimitError
 
+from agents.llms.llm_client import TerminalBenchLLMClientInterface
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.AgentInnerMessage import AgentInnerMessage
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.agent_memory import AgentMemory
+from agents.llms.academic_cloud import AcademicCloudLLMClient
+from agents.llms.open_router import OpenRouterLLMClient
 from agents.tools.response_format_checker import ResponseFormatChecker
 from agents.checker_agent import CheckerAgent
 
@@ -88,6 +84,13 @@ RECON_CMD = (
     "echo '=== TOOLS ===' && (which python3 pip git curl make 2>/dev/null | head -10 || true)"
 )
 
+LLM_PROVIDER_DICTIONARY: dict[str, TerminalBenchLLMClientInterface] = {
+    "openrouter": OpenRouterLLMClient,
+    "academiccloud": AcademicCloudLLMClient
+}
+
+LLM_PROVIDER = "openrouter"
+
 
 class TerminalBenchAgent:
     """Purple agent for Terminal Bench 2.0.
@@ -95,18 +98,17 @@ class TerminalBenchAgent:
     Maintains per-session conversation history across A2A turns.
     """
 
-    def __init__(self, model: str | None = None) -> None:
-        self._model = os.getenv("ACADEMICCLOUD_MODEL", "qwen3.6-35b-a3b")
-        print("model:", self._model)
-        self._base_url = os.getenv("ACADEMICCLOUD_ENDPOINT",
-                                   "https://chat-ai.academiccloud.de/v1")
+    def __init__(self) -> None:
         self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
         if not os.getenv("LANGSMITH_ENDPOINT"):
             os.environ["LANGSMITH_ENDPOINT"] = "api.smith.langchain.com"
 
-        self._llm: ChatOpenAI | None = None
+        # this is some MingXuan level code
+        llm_client_class = LLM_PROVIDER_DICTIONARY.get(LLM_PROVIDER)
+        self._llm_client: TerminalBenchLLMClientInterface = llm_client_class()
+        print("model:", self._llm_client.model())
         self._memory = AgentMemory(SystemMessage(str(
             SYSTEM_PROMPT)), short_term_window=10)
         self._checker_agent = CheckerAgent()
@@ -114,15 +116,6 @@ class TerminalBenchAgent:
         self._max_turn_count = 30
         self._max_syntax_retries = 5
         self._max_plan_turns = 3
-        self._temperature = 0.7
-
-        self._rate_limited = False
-        self._retry_log: list[dict] = []
-        self._backoff_enabled = os.getenv(
-            "ENABLE_RATE_LIMIT_BACKOFF", "true").lower() in ("1", "true", "yes", "True")
-        self._backoff_max_retries = int(os.getenv("BACKOFF_MAX_RETRIES", "4"))
-        self._backoff_base_delay = float(
-            os.getenv("BACKOFF_BASE_DELAY", "5.0"))
 
     @traceable(name="agent_session", run_type="chain")
     def _emit_session_trace(
@@ -139,66 +132,6 @@ class TerminalBenchAgent:
             "history_length": len(history),
             "completed": not rate_limited,
         }
-
-    def _create_llm(self) -> ChatOpenAI:
-        """Create or get the ChatOpenAI instance for AcademicCloud."""
-        if self._llm:
-            return self._llm
-
-        api_key = self._get_academic_cloud_api_key()
-
-        self._llm = ChatOpenAI(
-            model=self._model,
-            api_key=api_key,
-            base_url=self._base_url,
-            temperature=self._temperature,
-            tags=["eroverflow", "terminal-bench"],
-            metadata={"agent": "terminal_bench", "provider": "academiccloud"},
-        )
-        return self._llm
-
-    async def _invoke_llm_async(self, messages: list[Any]) -> str:
-        """Invoke the LLM. On 429, sets _rate_limited and re-raises.
-        If ENABLE_RATE_LIMIT_BACKOFF is set, retries with exponential backoff first."""
-        llm = self._create_llm()
-        loop = asyncio.get_running_loop()
-        max_attempts = self._backoff_max_retries if self._backoff_enabled else 1
-
-        for attempt in range(max_attempts):
-            try:
-                result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
-                return result
-            except RateLimitError as e:
-                if self._backoff_enabled and attempt < max_attempts - 1:
-                    delay = self._backoff_base_delay * (2 ** attempt)
-                    self._retry_log.append({
-                        "attempt": attempt + 1,
-                        "max_attempts": max_attempts,
-                        "delay_seconds": delay,
-                        "error": str(e)[:300],
-                    })
-                    print(
-                        f"Rate limit hit (attempt {attempt + 1}/{max_attempts}), retrying in {delay:.0f}s...")
-                    await asyncio.sleep(delay)
-                    continue
-                else:
-                    self._rate_limited = True
-                    self._retry_log.append({
-                        "attempt": attempt + 1,
-                        "max_attempts": max_attempts,
-                        "exhausted": True,
-                        "error": str(e)[:300],
-                    })
-                    raise e
-
-    def _get_academic_cloud_api_key(self):
-        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
-
-        if not api_key:
-            raise ValueError(
-                "ACADEMICCLOUD_API_KEY environment variable not set")
-
-        return api_key
 
     @staticmethod
     def _truncate_field(value: str, budget: int = MAX_OUTPUT_CHARS) -> str:
@@ -271,9 +204,9 @@ class TerminalBenchAgent:
 
         while syntax_attempts < self._max_syntax_retries:
             try:
-                result = await self._invoke_llm_async(messages)
+                result = await self._llm_client.invoke_async(messages)
             except RateLimitError:
-                if self._rate_limited:
+                if self._llm_client.rate_limited():
                     print("Rate limit was previously hit; returning final.")
                     return json.dumps({"kind": "final"})
                 raise
@@ -390,7 +323,7 @@ class TerminalBenchAgent:
 
         is_final = self._is_final(response_result)
 
-        if is_final or self._rate_limited:
+        if is_final or self._llm_client.rate_limited():
             history = [
                 {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
                 for m in self._memory.build_messages()
@@ -399,8 +332,8 @@ class TerminalBenchAgent:
                 self._emit_session_trace(
                     history=history,
                     turn_count=self._turn_count,
-                    rate_limited=self._rate_limited,
-                    retry_log=self._retry_log,
+                    rate_limited=self._llm_client.rate_limited(),
+                    retry_log=self._llm_client.retry_log(),
                 )
 
         if is_final:

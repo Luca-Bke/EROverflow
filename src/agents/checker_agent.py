@@ -8,7 +8,6 @@ multiple commands in a single response) and decides when a corrected response
 may be sent.
 """
 
-import asyncio
 import json
 import os
 import re
@@ -16,7 +15,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+
+from agents.llms.llm_client import TerminalBenchLLMClientInterface
+from agents.llms.academic_cloud import AcademicCloudLLMClient
+from agents.llms.open_router import OpenRouterLLMClient
 
 
 CHECKER_SYSTEM_PROMPT = """\
@@ -47,6 +49,13 @@ or
   {"approved": false, "feedback": "<one concrete instruction to the Actor>"}
 """
 
+CHECKER_LLM_PROVIDER_DICTIONARY: dict[str, type] = {
+    "openrouter": OpenRouterLLMClient,
+    "academiccloud": AcademicCloudLLMClient,
+}
+
+CHECKER_PROVIDER = "openrouter"
+
 
 @dataclass
 class CheckVerdict:
@@ -59,33 +68,17 @@ class CheckerAgent:
     """Second-stage, LLM-based validator and send-gate for the Actor."""
 
     def __init__(self, model: str | None = None) -> None:
-        self._model = model or os.getenv(
+        model = model or os.getenv(
             "CHECKER_MODEL",
             os.getenv("ACADEMICCLOUD_MODEL", "qwen3-coder-30b-a3b-instruct"),
         )
-        self._base_url = os.getenv(
-            "ACADEMICCLOUD_ENDPOINT", "https://chat-ai.academiccloud.de/v1"
+        temperature = float(os.getenv("CHECKER_TEMPERATURE", "0.0"))
+        provider = os.getenv("CHECKER_PROVIDER", CHECKER_PROVIDER)
+        llm_client_class = CHECKER_LLM_PROVIDER_DICTIONARY.get(
+            provider, AcademicCloudLLMClient)
+        self._llm_client: TerminalBenchLLMClientInterface = llm_client_class(
+            model=model, temperature=temperature
         )
-        self._temperature = float(os.getenv("CHECKER_TEMPERATURE", "0.0"))
-        self._llm: ChatOpenAI | None = None
-
-    def _get_api_key(self) -> str:
-        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
-        if not api_key:
-            raise ValueError("ACADEMICCLOUD_API_KEY environment variable not set")
-        return api_key
-
-    def _create_llm(self) -> ChatOpenAI:
-        if self._llm is None:
-            self._llm = ChatOpenAI(
-                model=self._model,
-                api_key=self._get_api_key(),
-                base_url=self._base_url,
-                temperature=self._temperature,
-                tags=["eroverflow", "terminal-bench", "checker"],
-                metadata={"agent": "checker", "provider": "academiccloud"},
-            )
-        return self._llm
 
     async def review(self, actor_response: str, syntax_error: str | None) -> CheckVerdict:
         """Review the Actor's response. Returns a verdict with feedback.
@@ -103,9 +96,7 @@ class CheckerAgent:
         ]
 
         try:
-            llm = self._create_llm()
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, lambda: llm.invoke(messages))
+            result = await self._llm_client.invoke_async(messages)
             raw = getattr(result, "content", str(result))
             return self._parse_verdict(raw, syntax_error)
         except Exception as e:
@@ -134,7 +125,8 @@ class CheckerAgent:
             # Could not parse a verdict — do not approve, surface what we have.
             return CheckVerdict(
                 approved=False,
-                feedback=(raw or syntax_error or "Respond with exactly one JSON object.").strip(),
+                feedback=(
+                    raw or syntax_error or "Respond with exactly one JSON object.").strip(),
             )
 
         approved = bool(data.get("approved"))

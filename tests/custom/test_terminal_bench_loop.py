@@ -167,7 +167,7 @@ def _execute_command(command: str, timeout: int, container_id: str) -> dict:
 
 @pytest.mark.asyncio
 async def test_terminal_bench_loop(agent, messenger, docker_container):
-    current_request = json.dumps(TASK_2)
+    current_request = json.dumps(TASK)
     result_script: list[str] = []
     max_iterations = 25
     completed = False
