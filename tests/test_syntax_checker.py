@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
@@ -10,7 +10,16 @@ from a2a.types import Message, Part, TextPart
 
 @pytest.fixture
 def agent():
-    return TerminalBenchAgent()
+    mock_client = MagicMock()
+    mock_client.invoke_async = AsyncMock()
+    mock_client.rate_limited = MagicMock(return_value=False)
+    mock_client.retry_log = MagicMock(return_value=[])
+    with patch.dict("agents.terminal_bench.LLM_PROVIDER_DICTIONARY", {
+        "openrouter": lambda **_: mock_client,
+        "academiccloud": lambda **_: mock_client,
+    }):
+        a = TerminalBenchAgent()
+    return a
 
 
 # --- ExecRequestChecker.check_command_syntax ---
@@ -203,7 +212,7 @@ async def test_retry_succeeds_on_second_attempt(agent):
         mock.content = bad if call_count == 1 else good
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
     _mock_checker(agent, approved=True)
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
@@ -222,7 +231,7 @@ async def test_retry_fails_after_max_attempts(agent):
         mock.content = "not valid json"
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
     _mock_checker(agent, approved=False)
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})

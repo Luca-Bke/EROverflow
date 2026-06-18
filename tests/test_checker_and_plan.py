@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -12,7 +12,16 @@ from a2a.types import Message, Part, TextPart
 
 @pytest.fixture
 def agent():
-    return TerminalBenchAgent()
+    mock_client = MagicMock()
+    mock_client.invoke_async = AsyncMock()
+    mock_client.rate_limited = MagicMock(return_value=False)
+    mock_client.retry_log = MagicMock(return_value=[])
+    with patch.dict("agents.terminal_bench.LLM_PROVIDER_DICTIONARY", {
+        "openrouter": lambda **_: mock_client,
+        "academiccloud": lambda **_: mock_client,
+    }):
+        a = TerminalBenchAgent()
+    return a
 
 
 def _make_message(text: str) -> Message:
@@ -58,7 +67,7 @@ def test_parse_verdict_unparseable_does_not_approve():
 async def test_checker_review_falls_open_on_llm_error():
     """When the underlying LLM is unavailable, review() returns error=True."""
     checker = CheckerAgent()
-    checker._create_llm = MagicMock(side_effect=RuntimeError("no api key"))
+    checker._llm_client.invoke_async = AsyncMock(side_effect=RuntimeError("no api key"))
     v = await checker.review('{"kind":"final"}', None)
     assert v.error is True
     assert v.approved is False
@@ -111,7 +120,7 @@ async def test_plan_turn_is_internal_then_exec_sent(agent):
         mock.content = plan if call_count == 1 else exec_req
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
     _mock_checker(agent, approved=True)
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
@@ -145,7 +154,7 @@ async def test_plan_turn_budget_does_not_exhaust_syntax_retries(agent):
         mock.content = plan if call_count <= 4 else exec_req
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
     _mock_checker(agent, approved=True)
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
@@ -167,7 +176,7 @@ async def test_checker_engaged_only_after_first_syntax_failure(agent):
         mock.content = good
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
     review_mock = AsyncMock(
         return_value=CheckVerdict(approved=True, feedback=""))
     agent._checker_agent.review = review_mock
@@ -197,7 +206,7 @@ async def test_checker_rejection_blocks_then_approval_sends(agent):
         mock.content = bad if call_count == 1 else good
         return mock
 
-    agent._invoke_llm_async = fake_invoke
+    agent._llm_client.invoke_async = fake_invoke
 
     # 1st review: diagnose the syntax error. 2nd: reject a syntactically-valid
     # response. 3rd: finally approve.
@@ -247,7 +256,7 @@ def test_truncate_exec_result_passes_small_output(agent):
 
 async def test_task_triggers_recon_without_llm(agent):
     invoke_mock = AsyncMock()
-    agent._invoke_llm_async = invoke_mock
+    agent._llm_client.invoke_async = invoke_mock
 
     task_payload = json.dumps({"kind": "task", "instruction": "do something"})
     updater = MagicMock()
