@@ -162,10 +162,7 @@ class TerminalBenchAgent:
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         
-
         input_text = get_message_text(message)
-
-        print(f"Received Message: {input_text}")
 
         await updater.start_work(
             new_agent_text_message(f"Turn {self._turn_count}: thinking...")
@@ -173,11 +170,7 @@ class TerminalBenchAgent:
 
         input_dict = json.loads(input_text)
 
-        print(f"received message type: {input_dict.get("kind")}")
-
         if input_dict.get("kind") == "task":
-            print("Received initial task instruction:",
-                  input_dict.get("instruction"))
             self._memory.set_task(HumanMessage(content=input_text))
             # Turn 0: deterministic recon — no LLM call. Grounds the agent in the
             # real environment before it plans or acts.
@@ -187,15 +180,12 @@ class TerminalBenchAgent:
             return recon
 
         elif input_dict.get("kind") == "exec_result":
-            print("Received execution result, updating history for next turn.")
             self._memory.add(HumanMessage(content=self._truncate_exec_result(input_text)))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
         messages = self._memory.build_messages()
-
-        print("history for llm consumption: ", messages)
 
         last_error: terminal_bench_format_exception | None = None
         syntax_attempts = 0
@@ -212,7 +202,6 @@ class TerminalBenchAgent:
                 raise
 
             response_text = getattr(result, "content", str(result))
-            print(f"LLM response (syntax_attempt {syntax_attempts + 1}): {response_text}")
 
             # ── Static syntax checker — always the first, cheap gate ──────────
             try:
@@ -221,7 +210,6 @@ class TerminalBenchAgent:
                 last_error = e
                 syntax_attempts += 1
                 checker_engaged = True  # engage the checker agent from now on
-                print(f"Syntax error (attempt {syntax_attempts}): {e.message}")
                 verdict = await self._checker_agent.review(response_text, e.message)
                 messages.append(AIMessage(content=response_text))
                 messages.append(AgentInnerMessage(content=json.dumps({
@@ -259,7 +247,6 @@ class TerminalBenchAgent:
                 verdict = await self._checker_agent.review(response_text, None)
                 if not verdict.approved and not verdict.error:
                     syntax_attempts += 1
-                    print(f"Checker rejected (attempt {syntax_attempts}): {verdict.feedback}")
                     messages.append(AIMessage(content=response_text))
                     messages.append(AgentInnerMessage(content=json.dumps({
                         "kind": "error",
@@ -317,8 +304,6 @@ class TerminalBenchAgent:
                 parts=[Part(root=TextPart(text=final_msg))]))
             return
 
-        print("Run was called with the following message")
-
         response_result = await self.handle_request_iteration(message, updater)
 
         is_final = self._is_final(response_result)
@@ -336,16 +321,12 @@ class TerminalBenchAgent:
                     retry_log=self._llm_client.retry_log(),
                 )
 
-        if is_final:
-            print("Agent signaled task completion.")
-
         # Send the agent response back to the A2A server. A task lives for only
         # one turn, so we must complete it exactly once — otherwise the executor
         # responds with an empty message and errors.
         response_msg = updater.new_agent_message(
             parts=[Part(root=TextPart(text=response_result))]
         )
-        print(f"Submitting response for turn {self._turn_count}: {response_msg}")
         await updater.complete(response_msg)
 
         self._turn_count += 1
