@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import Any, override
+from typing import Any
 
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
