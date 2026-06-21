@@ -16,12 +16,14 @@ from a2a.utils import get_message_text, new_agent_text_message
 from openai import RateLimitError
 
 from agents.llms.llm_client import TerminalBenchLLMClientInterface
+from agents.llms.open_router import OpenRouterLLMClient
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.AgentInnerMessage import AgentInnerMessage
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.agent_memory import AgentMemory
 from agents.llms.academic_cloud import AcademicCloudLLMClient
-from agents.llms.open_router import OpenRouterLLMClient
+from agents.llms.l3s import L3SLLMClient
+
 from agents.tools.response_format_checker import ResponseFormatChecker
 from agents.checker_agent import CheckerAgent
 
@@ -86,10 +88,11 @@ RECON_CMD = (
 
 LLM_PROVIDER_DICTIONARY: dict[str, TerminalBenchLLMClientInterface] = {
     "openrouter": OpenRouterLLMClient,
-    "academiccloud": AcademicCloudLLMClient
+    "academiccloud": AcademicCloudLLMClient,
+    "l3s": L3SLLMClient
 }
 
-LLM_PROVIDER = "openrouter"
+LLM_PROVIDER = "l3s"
 
 
 class TerminalBenchAgent:
