@@ -5,49 +5,27 @@ from typing import Any
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
-from agents.llms.llm_client import TerminalBenchLLMClientInterface
+from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
 
 
 class AcademicCloudLLMClient(TerminalBenchLLMClientInterface):
-    """Thin wrapper around ChatOpenAI for the AcademicCloud endpoint.
-
-    Owns connection config, lazy LLM instantiation, and exponential-backoff
-    retry logic for 429 responses. All other agent logic lives in the caller.
-    """
+    """LLM client for the AcademicCloud endpoint with exponential-backoff retry."""
 
     def __init__(
         self,
-        model: str | None = None,
-        base_url: str | None = None,
+        model: str = "qwen3.6-35b-a3b",
+        base_url: str = "https://chat-ai.academiccloud.de/v1",
         temperature: float = 0.7,
-        backoff_enabled: bool | None = None,
-        backoff_max_retries: int | None = None,
-        backoff_base_delay: float | None = None,
+        backoff_enabled: bool = True,
+        backoff_max_retries: int = 4,
+        backoff_base_delay: float = 5.0,
     ) -> None:
-        self._model = model or os.getenv(
-            "ACADEMICCLOUD_MODEL", "qwen3.6-35b-a3b")
-        self._base_url = base_url or os.getenv(
-            "ACADEMICCLOUD_ENDPOINT", "https://chat-ai.academiccloud.de/v1"
-        )
+        self._model = model
+        self._base_url = base_url
         self._temperature = temperature
-
-        self._backoff_enabled = (
-            backoff_enabled
-            if backoff_enabled is not None
-            else os.getenv("ENABLE_RATE_LIMIT_BACKOFF", "true").lower()
-            in ("1", "true", "yes", "True")
-        )
-        self._backoff_max_retries = (
-            backoff_max_retries
-            if backoff_max_retries is not None
-            else int(os.getenv("BACKOFF_MAX_RETRIES", "4"))
-        )
-        self._backoff_base_delay = (
-            backoff_base_delay
-            if backoff_base_delay is not None
-            else float(os.getenv("BACKOFF_BASE_DELAY", "5.0"))
-        )
-
+        self._backoff_enabled = backoff_enabled
+        self._backoff_max_retries = backoff_max_retries
+        self._backoff_base_delay = backoff_base_delay
         self._llm: ChatOpenAI | None = None
         self._rate_limited = False
         self._retry_log: list[dict] = []
@@ -61,19 +39,15 @@ class AcademicCloudLLMClient(TerminalBenchLLMClientInterface):
     def model(self) -> str:
         return self._model
 
-    def _get_api_key(self) -> str:
-        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "ACADEMICCLOUD_API_KEY environment variable not set")
-        return api_key
-
     def _create_llm(self) -> ChatOpenAI:
         if self._llm:
             return self._llm
+        api_key = os.getenv("ACADEMICCLOUD_API_KEY")
+        if not api_key:
+            raise ValueError("ACADEMICCLOUD_API_KEY environment variable not set")
         self._llm = ChatOpenAI(
             model=self._model,
-            api_key=self._get_api_key(),
+            api_key=api_key,
             base_url=self._base_url,
             temperature=self._temperature,
             tags=["eroverflow", "terminal-bench"],
@@ -82,8 +56,7 @@ class AcademicCloudLLMClient(TerminalBenchLLMClientInterface):
         return self._llm
 
     async def invoke_async(self, messages: list[Any]) -> Any:
-        """Invoke the LLM. On 429, retries with exponential backoff (if enabled),
-        then sets rate_limited and re-raises when retries are exhausted."""
+        """Invoke the LLM, retrying with exponential backoff on 429s."""
         llm = self._create_llm()
         loop = asyncio.get_running_loop()
         max_attempts = self._backoff_max_retries if self._backoff_enabled else 1

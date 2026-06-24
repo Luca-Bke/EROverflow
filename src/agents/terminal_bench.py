@@ -8,163 +8,63 @@ with final. State persists across turns via the shared Agent instance per contex
 import json
 import os
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langsmith import traceable, tracing_context
+from langsmith import tracing_context
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, Part, TextPart
 from a2a.utils import get_message_text, new_agent_text_message
 from openai import RateLimitError
 
-from agents.llms.llm_client import TerminalBenchLLMClientInterface
-from agents.llms.open_router import OpenRouterLLMClient
+from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
-from agents.tools.AgentInnerMessage import AgentInnerMessage
+from agents.terminal_bench_supplementary.pipeline_messages import ExecutionRequestCandidateMessage
+from agents.terminal_bench_supplementary import utils
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.agent_memory import AgentMemory
-from agents.llms.academic_cloud import AcademicCloudLLMClient
-from agents.llms.l3s import L3SLLMClient
-
 from agents.tools.response_format_checker import ResponseFormatChecker
 from agents.checker_agent import CheckerAgent
-
-SYSTEM_PROMPT = """\
-You are a terminal agent solving complex command-line tasks in a live shell environment.
-
-You will receive messages as JSON. Respond ONLY with a SINGLE valid JSON object — one of:
-  {"kind": "exec_request", "command": "<shell command>", "timeout": 300}
-or to organise your work into a plan you will work through step by step:
-  {"kind": "plan", "steps": ["step 1", "step 2", "..."]}
-or when the task is complete:
-  {"kind": "final"}
-
-CRITICAL — exactly ONE JSON object per response:
-- Respond with EXACTLY ONE JSON object. NEVER emit several JSON objects in one response.
-- NEVER send a sequence of commands at once. Send only the FIRST command, then WAIT for its
-  execution result before issuing the next one.
-- Do not include any text outside the JSON object.
-- Always end the task with {"kind": "final"} once it is complete — do not leave it hanging.
-
-Planning:
-- You may send {"kind": "plan", "steps": [...]} to record or update a plan. A plan is internal:
-  it is NOT executed in the shell, it is stored and shown back to you so you can work through it
-  step by step. After sending a plan, issue the first exec_request of that plan.
-
-Format checking:
-- A checker validates your response format. If your response is malformed (e.g. multiple commands
-  in one response), it returns concrete feedback. Read it and reply with a single, corrected JSON object.
-
-Workflow:
-- Turn 0 is an automatic reconnaissance command (pwd/ls/find/git/tools). Read its output.
-- Then send a {"kind": "plan", ...} grounded in what recon revealed, and work through it step by step.
-
-Command Execution Rules:
-- Never use interactive commands (vim, nano, less, ssh -t, top, htop, etc.)
-- Always use non-interactive flags: apt-get -y, git --no-pager, python -c, etc.
-- Bound the output of long/noisy commands so they do not flood your context:
-    apt-get install -y X > /tmp/log 2>&1; tail -n 40 /tmp/log
-    pip install --break-system-packages X 2>&1 | tail -3
-- VERIFY before you finish: actually run the task's test/verification (e.g. the test harness,
-  the smoke test, or a grep check) and confirm it passes BEFORE sending {"kind": "final"}.
-- If a command fails, diagnose and try a different approach
-- You can send a maximum of 30 commands total
-- If the stderr and stdout of a command are not relevant to your further succeeding (e.g. the output of apt-get install update),
-then pipe the output to null, the output does not clog up the history
-- When possible, use filters to find the relevant information in log files or similar data
-
-"""
-
-# Head+tail budget (chars) for stdout/stderr of a single exec_result kept in memory.
-MAX_OUTPUT_CHARS = 6000
-
-# Fixed turn-0 reconnaissance: grounds every later decision in the real
-# environment. Sent deterministically (no LLM call) on the first task message.
-RECON_CMD = (
-    "echo '=== PWD ===' && pwd && "
-    "echo '=== LS ===' && ls -la && "
-    "echo '=== FILES ===' && find . -maxdepth 2 -not -path '*/.*' -type f | sort | head -40 && "
-    "echo '=== GIT ===' && (git log --oneline -5 2>/dev/null || echo '(no git)') && "
-    "echo '=== TOOLS ===' && (which python3 pip git curl make 2>/dev/null | head -10 || true)"
-)
-
-LLM_PROVIDER_DICTIONARY: dict[str, TerminalBenchLLMClientInterface] = {
-    "openrouter": OpenRouterLLMClient,
-    "academiccloud": AcademicCloudLLMClient,
-    "l3s": L3SLLMClient
-}
-
-LLM_PROVIDER = "l3s"
 
 
 class TerminalBenchAgent:
     """Purple agent for Terminal Bench 2.0.
 
     Maintains per-session conversation history across A2A turns.
+    All configuration is injected via the constructor; nothing is read from
+    module-level globals or environment variables except the LangSmith toggle.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        llm_client: TerminalBenchLLMClientInterface,
+        system_prompt: str,
+        recon_cmd: str,
+        max_turn_count: int = 30,
+        max_syntax_retries: int = 5,
+        max_plan_turns: int = 3,
+        short_term_window: int = 10,
+    ) -> None:
         self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
         if not os.getenv("LANGSMITH_ENDPOINT"):
             os.environ["LANGSMITH_ENDPOINT"] = "api.smith.langchain.com"
 
-        # this is some MingXuan level code
-        llm_client_class = LLM_PROVIDER_DICTIONARY.get(LLM_PROVIDER)
-        self._llm_client: TerminalBenchLLMClientInterface = llm_client_class()
-        print("model:", self._llm_client.model())
-        self._memory = AgentMemory(SystemMessage(str(
-            SYSTEM_PROMPT)), short_term_window=10)
+        self._llm_client = llm_client
+        self._recon_cmd = recon_cmd
+        self._max_turn_count = max_turn_count
+        self._max_syntax_retries = max_syntax_retries
+        self._max_plan_turns = max_plan_turns
+
+        # Temporary: single prompt passed to all three roles until the
+        # planner-actor-critic flow is wired up.
+        _prompt = SystemMessage(system_prompt)
+        self._memory = AgentMemory(_prompt, _prompt, _prompt, short_term_window=short_term_window)
         self._checker_agent = CheckerAgent()
         self._turn_count = 0
-        self._max_turn_count = 30
-        self._max_syntax_retries = 5
-        self._max_plan_turns = 3
-
-    @traceable(name="agent_session", run_type="chain")
-    def _emit_session_trace(
-        self,
-        history: list[dict],
-        turn_count: int,
-        rate_limited: bool,
-        retry_log: list[dict],
-    ) -> dict:
-        return {
-            "turn_count": turn_count,
-            "rate_limited": rate_limited,
-            "retry_count": len(retry_log),
-            "history_length": len(history),
-            "completed": not rate_limited,
-        }
-
-    @staticmethod
-    def _truncate_field(value: str, budget: int = MAX_OUTPUT_CHARS) -> str:
-        """Keep the head and tail of a long string, eliding the middle."""
-        if len(value) <= budget:
-            return value
-        half = budget // 2
-        elided = len(value) - 2 * half
-        return f"{value[:half]}\n…[{elided} chars truncated]…\n{value[-half:]}"
-
-    def _truncate_exec_result(self, input_text: str) -> str:
-        """Bound stdout/stderr of an exec_result before it enters memory.
-
-        A single apt-get/pip/training command can emit tens of thousands of
-        lines; storing that verbatim blows the rolling context window and can
-        crash the A2A gateway. We keep head+tail of each stream.
-        """
-        try:
-            data = json.loads(input_text)
-        except (json.JSONDecodeError, ValueError):
-            return self._truncate_field(input_text)
-
-        for field in ("stdout", "stderr", "output"):
-            if isinstance(data.get(field), str):
-                data[field] = self._truncate_field(data[field])
-        return json.dumps(data)
 
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
-        
+
         input_text = get_message_text(message)
 
         await updater.start_work(
@@ -174,21 +74,22 @@ class TerminalBenchAgent:
         input_dict = json.loads(input_text)
 
         if input_dict.get("kind") == "task":
-            self._memory.set_task(HumanMessage(content=input_text))
+            self._memory.set_task_formulation(HumanMessage(content=input_text))
             # Turn 0: deterministic recon — no LLM call. Grounds the agent in the
             # real environment before it plans or acts.
             recon = json.dumps(
-                {"kind": "exec_request", "command": RECON_CMD, "timeout": 60})
+                {"kind": "exec_request", "command": self._recon_cmd, "timeout": 60})
             self._memory.add(AIMessage(content=recon))
             return recon
 
         elif input_dict.get("kind") == "exec_result":
-            self._memory.add(HumanMessage(content=self._truncate_exec_result(input_text)))
+            self._memory.add(HumanMessage(
+                content=utils.truncate_exec_result(input_text)))
 
         else:
             print(f"Received unknown message type: {input_dict.get('kind')}")
 
-        messages = self._memory.build_messages()
+        messages = self._memory.build_actor_messages()
 
         last_error: terminal_bench_format_exception | None = None
         syntax_attempts = 0
@@ -215,7 +116,7 @@ class TerminalBenchAgent:
                 checker_engaged = True  # engage the checker agent from now on
                 verdict = await self._checker_agent.review(response_text, e.message)
                 messages.append(AIMessage(content=response_text))
-                messages.append(AgentInnerMessage(content=json.dumps({
+                messages.append(ExecutionRequestCandidateMessage(content=json.dumps({
                     "kind": "error",
                     "error": verdict.feedback or e.message,
                 })))
@@ -228,16 +129,16 @@ class TerminalBenchAgent:
                 self._memory.set_plan(response_dict)
                 self._memory.add(AIMessage(content=response_text))
                 plan_turns += 1
-                messages = self._memory.build_messages()
+                messages = self._memory.build_actor_messages()
                 if plan_turns >= self._max_plan_turns:
                     # Past the budget keep storing, but charge the syntax budget so a
                     # model that only ever plans cannot loop forever.
                     syntax_attempts += 1
-                    messages.append(AgentInnerMessage(content=(
+                    messages.append(ExecutionRequestCandidateMessage(content=(
                         "You have planned enough. Now issue a single exec_request "
                         "for the first step of your plan.")))
                 else:
-                    messages.append(AgentInnerMessage(content=(
+                    messages.append(ExecutionRequestCandidateMessage(content=(
                         "Plan stored. Now issue a single exec_request for the first "
                         "step, or update the plan.")))
                 continue
@@ -251,7 +152,7 @@ class TerminalBenchAgent:
                 if not verdict.approved and not verdict.error:
                     syntax_attempts += 1
                     messages.append(AIMessage(content=response_text))
-                    messages.append(AgentInnerMessage(content=json.dumps({
+                    messages.append(ExecutionRequestCandidateMessage(content=json.dumps({
                         "kind": "error",
                         "error": verdict.feedback,
                     })))
@@ -290,13 +191,6 @@ class TerminalBenchAgent:
 
         return response_dict
 
-    @staticmethod
-    def _is_final(response_result: str) -> bool:
-        try:
-            return json.loads(response_result).get("kind") == "final"
-        except (json.JSONDecodeError, AttributeError, ValueError):
-            return False
-
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         # Out of turn budget: send a clean final so the executor never has to
         # respond with an empty message (which it treats as an error).
@@ -309,15 +203,14 @@ class TerminalBenchAgent:
 
         response_result = await self.handle_request_iteration(message, updater)
 
-        is_final = self._is_final(response_result)
-
-        if is_final or self._llm_client.rate_limited():
+        if utils.is_final_response(response_result) or self._llm_client.rate_limited():
             history = [
-                {"role": getattr(m, "type", "unknown"), "content": str(getattr(m, "content", m))}
-                for m in self._memory.build_messages()
+                {"role": getattr(m, "type", "unknown"),
+                 "content": str(getattr(m, "content", m))}
+                for m in self._memory.build_actor_messages()
             ]
             with tracing_context(enabled=self._trace_enabled):
-                self._emit_session_trace(
+                utils.emit_session_trace(
                     history=history,
                     turn_count=self._turn_count,
                     rate_limited=self._llm_client.rate_limited(),

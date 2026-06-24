@@ -5,10 +5,10 @@ from typing import Any
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
-from agents.llms.llm_client import TerminalBenchLLMClientInterface
+from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
 
 
-class L3SLLMClient(TerminalBenchLLMClientInterface):
+class OpenRouterLLMClient(TerminalBenchLLMClientInterface):
     """Agent wrapper around OpenRouter-backed ChatOpenAI.
 
     Usage: instantiate and call `await agent.run(message, updater)` from an
@@ -17,7 +17,7 @@ class L3SLLMClient(TerminalBenchLLMClientInterface):
 
     def __init__(self, model: str | None = None,
                  temperature: float = 0.7) -> None:
-        self._model = model or "vllm/gpt-oss:120b-mxfp4"
+        self._model = model or "openai/gpt-oss-120b:free"
         self._temperature = temperature
         self._llm: ChatOpenAI | None = None
         self._rate_limited = False
@@ -36,14 +36,14 @@ class L3SLLMClient(TerminalBenchLLMClientInterface):
         if self._llm:
             return self._llm
 
-        api_key = os.getenv("LLMHUB_APIKEY")
+        api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
-            raise ValueError("LLMHUB_APIKEY environment variable not set")
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
 
         self._llm = ChatOpenAI(
             model=self._model,
             api_key=api_key,
-            base_url="https://brrr.kbs.uni-hannover.de/v1",
+            base_url="https://openrouter.ai/api/v1",
             temperature=self._temperature,
         )
         return self._llm

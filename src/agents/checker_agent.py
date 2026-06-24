@@ -16,9 +16,9 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from agents.llms.llm_client import TerminalBenchLLMClientInterface
-from agents.llms.academic_cloud import AcademicCloudLLMClient
-from agents.llms.open_router import OpenRouterLLMClient
+from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
+from agents.llm_clients.academic_cloud import AcademicCloudLLMClient
+from agents.llm_clients.open_router import OpenRouterLLMClient
 
 
 CHECKER_SYSTEM_PROMPT = """\

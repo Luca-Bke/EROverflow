@@ -1,10 +1,12 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from agents.terminal_bench import TerminalBenchAgent, RECON_CMD, MAX_OUTPUT_CHARS
+from agents.terminal_bench import TerminalBenchAgent
+from agents.configuration.config import RECON_CMD, MAX_OUTPUT_CHARS
+from agents.terminal_bench_supplementary import utils
 from agents.checker_agent import CheckerAgent, CheckVerdict
 from agents.tools.agent_memory import AgentMemory
 from a2a.types import Message, Part, TextPart
@@ -16,12 +18,11 @@ def agent():
     mock_client.invoke_async = AsyncMock()
     mock_client.rate_limited = MagicMock(return_value=False)
     mock_client.retry_log = MagicMock(return_value=[])
-    with patch.dict("agents.terminal_bench.LLM_PROVIDER_DICTIONARY", {
-        "openrouter": lambda **_: mock_client,
-        "academiccloud": lambda **_: mock_client,
-    }):
-        a = TerminalBenchAgent()
-    return a
+    return TerminalBenchAgent(
+        llm_client=mock_client,
+        system_prompt="test system prompt",
+        recon_cmd=RECON_CMD,
+    )
 
 
 def _make_message(text: str) -> Message:
@@ -76,7 +77,8 @@ async def test_checker_review_falls_open_on_llm_error():
 # ── AgentMemory: plan slot + rolling window ────────────────────────────────────
 
 def test_memory_set_plan_from_dict():
-    mem = AgentMemory(SystemMessage(content="sys"), short_term_window=10)
+    sys = SystemMessage(content="sys")
+    mem = AgentMemory(sys, sys, sys, short_term_window=10)
     mem.set_plan({"kind": "plan", "steps": ["a", "b", "c"]})
     plan = mem.get_plan()
     assert plan is not None
@@ -84,20 +86,19 @@ def test_memory_set_plan_from_dict():
 
 
 def test_memory_window_keeps_last_5_pairs():
-    mem = AgentMemory(SystemMessage(content="sys"), short_term_window=10)
-    mem.set_task(HumanMessage(content="task"))
+    sys = SystemMessage(content="sys")
+    mem = AgentMemory(sys, sys, sys, short_term_window=10)
     mem.set_plan({"steps": ["do x"]})
     # Add 8 exchange pairs = 16 messages; only last 10 short-term should remain.
     for i in range(8):
         mem.add(HumanMessage(content=f"exec_result {i}"))
         mem.add(AIMessage(content=f"response {i}"))
 
-    messages = mem.build_messages()
-    # system + task + plan + 10 short-term
+    messages = mem.build_planner_messages()
+    # planner_system + plan + 10 short-term
     assert messages[0].content == "sys"
-    assert messages[1].content == "task"
-    assert "do x" in messages[2].content
-    short_term = messages[3:]
+    assert "do x" in messages[1].content
+    short_term = messages[2:]
     assert len(short_term) == 10
     # Oldest surviving pair is exchange #3 (pairs 0,1,2 rolled off)
     assert short_term[0].content == "exec_result 3"
@@ -227,28 +228,28 @@ async def test_checker_rejection_blocks_then_approval_sends(agent):
 
 # ── #2 exec_result output truncation ───────────────────────────────────────────
 
-def test_truncate_field_keeps_head_and_tail(agent):
+def test_truncate_field_keeps_head_and_tail():
     big = "A" * 1000 + "B" * 20000 + "Z" * 1000
-    out = agent._truncate_field(big, budget=6000)
+    out = utils.truncate_field(big, budget=6000)
     assert len(out) < len(big)
     assert out.startswith("A")
     assert out.endswith("Z")
     assert "truncated" in out
 
 
-def test_truncate_exec_result_bounds_stdout(agent):
+def test_truncate_exec_result_bounds_stdout():
     payload = json.dumps(
         {"kind": "exec_result", "stdout": "x" * 50000, "exit_code": 0})
-    out = agent._truncate_exec_result(payload)
+    out = utils.truncate_exec_result(payload)
     data = json.loads(out)
     assert len(data["stdout"]) <= MAX_OUTPUT_CHARS + 100  # + elision marker
     assert data["exit_code"] == 0
 
 
-def test_truncate_exec_result_passes_small_output(agent):
+def test_truncate_exec_result_passes_small_output():
     payload = json.dumps(
         {"kind": "exec_result", "stdout": "all good", "exit_code": 0})
-    out = agent._truncate_exec_result(payload)
+    out = utils.truncate_exec_result(payload)
     assert json.loads(out)["stdout"] == "all good"
 
 
