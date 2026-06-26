@@ -3,7 +3,7 @@ from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class TerminalBenchLLMClientInterface(Protocol):
+class AbstractLLMClient(Protocol):
 
     @abstractmethod
     def rate_limited(self) -> bool: ...

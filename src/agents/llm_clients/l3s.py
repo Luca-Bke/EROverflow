@@ -5,10 +5,10 @@ from typing import Any
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
-from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
+from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 
 
-class L3SLLMClient(TerminalBenchLLMClientInterface):
+class L3SLLMClient(AbstractLLMClient):
     """LLM client for the L3S / LLMHub vLLM endpoint."""
 
     def __init__(
@@ -51,7 +51,8 @@ class L3SLLMClient(TerminalBenchLLMClientInterface):
         llm = self._create_llm()
         loop = asyncio.get_running_loop()
         try:
-            return await loop.run_in_executor(None, lambda: llm.invoke(messages))
+            return await loop.run_in_executor(None,
+                                              lambda: llm.invoke(messages))
         except RateLimitError as e:
             self._rate_limited = True
             self._retry_log.append({"exhausted": True, "error": str(e)[:300]})

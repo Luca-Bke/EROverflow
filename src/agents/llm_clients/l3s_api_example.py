@@ -13,7 +13,8 @@ client = OpenAI()
 completion = client.chat.completions.create(
     model="vllm/gpt-oss:120b-mxfp4",
     messages=[
-        {"role": "system", "content": "You are an AI assistant that helps people find information."},
+        {"role": "system", "content": """""You are an AI assistant that helps
+         people find information."""},
         {"role": "user", "content": "Hello, who are you?"},
     ],
 )

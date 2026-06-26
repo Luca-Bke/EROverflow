@@ -1,5 +1,6 @@
 import json
 
+from langchain_core.messages import BaseMessage
 from langsmith import traceable
 
 from agents.configuration import config
@@ -61,3 +62,10 @@ def truncate_exec_result(input_text: str) -> str:
         if isinstance(data.get(field), str):
             data[field] = truncate_field(data[field])
     return json.dumps(data)
+
+
+def apply_message_label(message: BaseMessage, label: str) -> BaseMessage:
+    if not message.content.startswith(f"[{label}]"):
+        return type(message)(content=f"[{label}]\n{message.content}")
+    else:
+        return message

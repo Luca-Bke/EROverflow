@@ -193,7 +193,7 @@ def _make_message(text: str) -> Message:
 
 def _mock_checker(agent, approved: bool = True, feedback: str = "send one command"):
     """Replace the checker agent with a deterministic stub (no real LLM)."""
-    from agents.checker_agent import CheckVerdict
+    from agents.critic import CheckVerdict
     agent._checker_agent.review = AsyncMock(
         return_value=CheckVerdict(approved=approved, feedback=feedback))
 

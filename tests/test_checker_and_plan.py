@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from agents.terminal_bench import TerminalBenchAgent
 from agents.configuration.config import RECON_CMD, MAX_OUTPUT_CHARS
 from agents.terminal_bench_supplementary import utils
-from agents.checker_agent import CheckerAgent, CheckVerdict
+from agents.critic import CheckerAgent, CheckVerdict
 from agents.tools.agent_memory import AgentMemory
 from a2a.types import Message, Part, TextPart
 

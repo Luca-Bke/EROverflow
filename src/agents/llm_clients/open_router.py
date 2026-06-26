@@ -5,10 +5,10 @@ from typing import Any
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
-from agents.llm_clients.llm_client import TerminalBenchLLMClientInterface
+from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 
 
-class OpenRouterLLMClient(TerminalBenchLLMClientInterface):
+class OpenRouterLLMClient(AbstractLLMClient):
     """Agent wrapper around OpenRouter-backed ChatOpenAI.
 
     Usage: instantiate and call `await agent.run(message, updater)` from an

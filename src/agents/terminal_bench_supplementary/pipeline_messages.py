@@ -50,3 +50,12 @@ class ExecutionRequestCandidateMessage(HumanMessage):
 
     def __init__(self, content: str | list[str | dict], **kwargs: Any) -> None:
         super().__init__(content=content, **kwargs)
+
+
+class HumanTaskMessage(HumanMessage):
+    """The initial task issued by the human that all agents must complete."""
+
+    type: Literal["human_task"] = "human_task"
+
+    def __init__(self, content: str | list[str | dict], **kwargs: Any) -> None:
+        super().__init__(content=content, **kwargs)
