@@ -14,7 +14,7 @@ class L3SLLMClient(AbstractLLMClient):
     def __init__(
         self,
         model: str = "vllm/gpt-oss:120b-mxfp4",
-        base_url: str = "https://brrr.kbs.uni-hannover.de/v1",
+        base_url: str = "https://inference.kbs.uni-hannover.de/v1",  # "https://brrr.kbs.uni-hannover.de/v1",
         temperature: float = 0.7,
     ) -> None:
         self._model = model

@@ -198,7 +198,7 @@ LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
 
 #L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
 L3S_MODEL = "ollama/qwen3.6:27b"
-L3S_ENDPOINT = "https://brrr.kbs.uni-hannover.de/v1"
+L3S_ENDPOINT = "https://inference.kbs.uni-hannover.de/v1"  #"https://brrr.kbs.uni-hannover.de/v1"
 
 # ── AcademicCloud ────────────────────────────────────────────────────────────
 
