@@ -19,7 +19,7 @@ from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 from agents.planner import PlannerAgent
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
-from agents.critic import CriticAgent, CriticVerdict
+from agents.critic import CriticAgent
 from a2a.utils import get_message_text
 
 
@@ -56,6 +56,7 @@ class TerminalBenchAgent:
 
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
+        self._turn_count += 1
 
         try:
             input_text = get_message_text(message)
@@ -87,7 +88,7 @@ class TerminalBenchAgent:
                 critic_actor_rounds += 1
 
                 actor_messages = self._memory.build_actor_messages()
-                print(f"actor messages: {actor_messages}\n")
+                print(f"actor messages:\n{actor_messages}\n")
                 actor_result = await self._actor_agent.invoke(actor_messages)
                 exec_request = getattr(actor_result, "content")
                 self._memory.set_execution_request_candidate(exec_request)

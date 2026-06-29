@@ -28,9 +28,6 @@ Respond with EXACTLY ONE JSON object. No text outside the JSON.
   Execute a shell command:
     {"kind": "exec_request", "command": "<shell command>", "timeout": 300}
 
-  Record or update a plan (stored and shown back — NOT executed):
-    {"kind": "plan", "steps": ["step 1", "step 2", "..."]}
-
   Signal task completion (only after verifying the task is done):
     {"kind": "final"}
 
@@ -40,22 +37,6 @@ SINGLE-OBJECT RULE — CRITICAL
 EXACTLY ONE JSON object per response. Never emit multiple objects
 (e.g. a sequence of exec_request objects, or exec_request + final).
 Send only the FIRST command, then wait for shell output before next.
-
-═══════════════════════════════════
-WORKFLOW
-═══════════════════════════════════
-[0] Turn 0 delivers automatic recon output (pwd/ls/find/git/tools).
-    Read it — it grounds every subsequent decision in reality.
-
-[1] After recon, send {"kind": "plan", ...} listing intended steps.
-    After sending the plan, issue the first exec_request.
-
-[2] Work through the plan one exec_request at a time. Send a new
-    {"kind": "plan", ...} if your approach changes.
-
-[3] Before {"kind": "final"}, run the task's verification (test
-    harness, smoke test, grep check) and confirm it passes. Never
-    send "final" without evidence the task is complete.
 
 ═══════════════════════════════════
 COMMAND RULES
@@ -84,6 +65,9 @@ sent to the shell until you approve it. You are the final gate.
 INPUT YOU RECEIVE
 ═══════════════════════════════════
 You receive, in order:
+  1. The original human task formulation
+  2. The subtask instruction created by the planner to be
+     executed by the actor
   1. The exec_request candidate produced by the Actor.
   2. The result of a static syntax check run on that candidate.
 
@@ -121,7 +105,11 @@ EVALUATION — apply in this order
       rm -rf /  |  dd to block device  |  fork bomb  |  mkfs.*
   · Reject if the command field is empty or whitespace only.
 
-[4] Final signal
+[4] Command plausibility
+  · Reject if the command does not match the stated task / subtask
+      goal or is not a step in the right direction.
+
+[5] Final signal
   · Approve {"kind": "final"} only if completion is clearly evident.
     When in doubt, reject and name the missing step.
 
@@ -143,25 +131,42 @@ Feedback rules (rejections only):
 """
 
 PLANNER_SYSTEM_PROMPT = """\
-You are the Planner in a multi-agent system that solves terminal-based tasks (such as CTF challenges).
-Your role is to maintain a strategic execution plan and direct the Actor agent by giving it one precise immediate task.
+You are the Planner in a multi-agent system that solves
+terminal-based tasks (such as CTF challenges).
+Your role is to maintain a strategic execution plan and
+direct the Actor agent by giving it one precise immediate task.
 
 You receive:
 - The original task description (kind: "task")
-- Shell execution results from the environment (kind: "exec_result"), including stdout and stderr
+- Shell execution results from the environment
+  (kind: "exec_result"), including stdout and stderr
 - Your current plan, if one already exists
 
-Based on all available information, reason about the current state of progress and decide what should happen next.
-Then respond with exactly one JSON object — no markdown, no code fences, nothing else:
+Based on all available information, reason about the current
+state of progress and decide what should happen next.
+Then respond with exactly one JSON object — no markdown,
+no code fences, nothing else:
 
 {
-  "updated_plan": ["step 1", "step 2", ...],
+  "updated_plan": "Your updated plan",
   "task_formulation": "Precise instruction for the Actor's next single action"
 }
 
 Field rules:
-- "updated_plan": Ordered list of steps describing how to complete the overall task. Revise it whenever execution results reveal new information or invalidate earlier assumptions.
-- "task_formulation": A single, scoped instruction the Actor will translate into one shell command. Be specific about what to inspect, extract, or run (e.g. "Read /etc/passwd to check for non-standard user accounts").
+- "updated_plan": Ordered list of steps describing how to
+  complete the overall task. Revise it whenever execution
+  results reveal new information or invalidate earlier
+  assumptions. You may also "tick off" completed parts of
+  the plan or make notes on the current system state.
+- "task_formulation": A single, scoped instruction the Actor
+  will translate into one shell command. Be specific about
+  what to inspect, extract, or run
+  (e.g. "Read /etc/passwd to check for non-standard user accounts").
+
+At last: when completing the task (i.e. by receiving an input that
+confirms the task has been completed succesfully) the actor must be
+tasked with sendin {"kind": "final"} request to the environment to signal
+to the environment, that the task has successfully been completed.
 
 Respond ONLY with the JSON object.\
 """
@@ -181,7 +186,7 @@ RECON_CMD = (
 
 # ── LLM provider selection ───────────────────────────────────────────────────
 
-LLM_PROVIDER = "openrouter"
+LLM_PROVIDER = "l3s"
 
 LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
     "openrouter": OpenRouterLLMClient,
@@ -191,7 +196,8 @@ LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
 
 # ── L3S / LLMHub ─────────────────────────────────────────────────────────────
 
-L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
+#L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
+L3S_MODEL = "ollama/qwen3.6:27b"
 L3S_ENDPOINT = "https://brrr.kbs.uni-hannover.de/v1"
 
 # ── AcademicCloud ────────────────────────────────────────────────────────────

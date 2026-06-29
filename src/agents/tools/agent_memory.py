@@ -132,7 +132,8 @@ class AgentMemory:
             messages.append(self._task)
         if self._plan:
             messages.append(self._plan)
-        messages.append(HumanMessage(content="The following is the short time history of executed commands:"))
+        messages.append(HumanMessage(
+            content="The following is the short time history of executed commands:"))
         messages.extend(self._short_term)
         return messages
 
@@ -143,7 +144,8 @@ class AgentMemory:
             messages.append(self._task)
         if self._subtask_formulation:
             messages.append(self._subtask_formulation)
-        messages.append(HumanMessage(content="The following is the short time history of executed commands:"))
+        messages.append(HumanMessage(
+            content="The following is the short time history of executed commands:"))
         messages.extend(self._short_term)
         if self._critic_feedback:
             messages.append(self._critic_feedback)
@@ -159,3 +161,13 @@ class AgentMemory:
         if self._execution_request_candidate:
             messages.append(self._execution_request_candidate)
         return messages
+
+    def snapshot_memory(self) -> dict[str, Any]:
+        return {
+            "task": self._task,
+            "plan": self._plan,
+            "subtask": self._subtask_formulation,
+            "req_cand": self._execution_request_candidate,
+            "critic_feed": self._critic_feedback,
+            "memory": self._short_term
+        }

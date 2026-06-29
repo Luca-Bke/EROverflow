@@ -54,13 +54,19 @@ class ExecRequestChecker():
                 "exec_request has an empty command")
         ExecRequestChecker._check_no_interactive_commands(command)
         ExecRequestChecker._check_no_destructive_commands(command)
-        result = subprocess.run(
-            ["bash", "-n"],
-            input=command,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        try:
+            result = subprocess.run(
+                ["bash", "-n"],
+                input=command,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except Exception as e:
+            raise terminal_bench_format_exception(
+                f"an error occured durig the static syntax checl of the shell command: {command!r}. The following exception was raised: {str(e)}"
+            )
+            
         if result.returncode != 0:
             raise terminal_bench_format_exception(
                 f"command in exec request has invalid shell syntax: {result.stderr.strip()!r} — command was: {command!r}"

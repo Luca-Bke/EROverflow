@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, Part, TextPart
@@ -49,6 +50,7 @@ class Agent:
             os.environ["LANGSMITH_ENDPOINT"] = "api.smith.langchain.com"
         self._turn_count = 0
         self._max_turn_count = config.MAX_TURN_COUNT
+        self._memory_log: list[dict[str, Any]] = []
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         """ Check max turn count implement final tracing via langchain.
@@ -68,15 +70,14 @@ class Agent:
 
         response_result = await self._backend.handle_request_iteration(message, updater)
 
-        if utils.is_final_response(response_result) or self._backend._llm_client.rate_limited():
-            history = [
-                {"role": getattr(m, "type", "unknown"),
-                 "content": str(getattr(m, "content", m))}
-                for m in self._backend._memory.build_actor_messages()
-            ]
+        self._memory_log.append(self._backend._memory.snapshot_memory())
+
+        if (utils.is_final_response(response_result) or
+                self._backend._llm_client.rate_limited()):
+
             with tracing_context(enabled=self._trace_enabled):
                 utils.emit_session_trace(
-                    history=history,
+                    history=self._memory_log,
                     turn_count=self._turn_count,
                     rate_limited=self._backend._llm_client.rate_limited(),
                     retry_log=self._backend._llm_client.retry_log(),

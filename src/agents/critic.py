@@ -152,6 +152,12 @@ class CriticAgent(AbstractAgent):
             raw_critic_verdict = getattr(response, "content", str(response))
             verdict: CriticVerdict = self._parse_verdict(raw_critic_verdict)
 
+            if static_syntax_validation_message != (
+                "No syntax error detected during"
+                "static syntax validation"
+            ):
+                verdict.approved = False
+
             if (verdict.is_valid_verdict or verdict.error):
                 return verdict
 
