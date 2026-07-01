@@ -10,9 +10,11 @@ from agents.configuration import config
 
 def is_final_response(response_result: str) -> bool:
     """Return True if the response JSON carries kind=final."""
+    if not response_result:
+        return False
     try:
         return json.loads(response_result).get("kind") == "final"
-    except (json.JSONDecodeError, AttributeError, ValueError):
+    except (json.JSONDecodeError, AttributeError, ValueError, TypeError):
         return False
 
 

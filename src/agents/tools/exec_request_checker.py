@@ -27,6 +27,41 @@ class ExecRequestChecker():
         r">\s*/dev/[sh]d",             # write directly to block device
     ]
 
+    # Cached result of the one-time bash-availability probe.
+    # None = not probed yet, True/False = probe result.
+    _bash_available: bool | None = None
+
+    @classmethod
+    def _probe_bash(cls) -> bool:
+        """Probe once whether `bash -n` is usable in this environment.
+
+        On Windows/WSL setups without a working bash, spawning `bash -n` either
+        raises (binary missing) or returns non-zero (e.g. a WSL relay error).
+        In that case the static grammar check would reject *every* command. We
+        therefore probe with a trivially valid command once and, if it fails,
+        skip the grammar check for the whole session (fail-open). The
+        interactive/destructive filters are pure Python and stay active.
+        """
+        if cls._bash_available is not None:
+            return cls._bash_available
+        try:
+            result = subprocess.run(
+                ["bash", "-n"],
+                input="echo probe",
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            cls._bash_available = result.returncode == 0
+        except Exception:
+            cls._bash_available = False
+        if not cls._bash_available:
+            print(
+                "bash is not usable here — skipping static shell-syntax checks "
+                "(interactive/destructive filters stay active)."
+            )
+        return cls._bash_available
+
     def _check_no_interactive_commands(command: str) -> None:
         tokens = command.strip().split()
         first_token = tokens[0].split("/")[-1]
@@ -54,6 +89,12 @@ class ExecRequestChecker():
                 "exec_request has an empty command")
         ExecRequestChecker._check_no_interactive_commands(command)
         ExecRequestChecker._check_no_destructive_commands(command)
+
+        # Fail-open: if bash can't be run here (e.g. Windows/WSL without a
+        # working bash), skip the grammar check instead of rejecting everything.
+        if not ExecRequestChecker._probe_bash():
+            return
+
         try:
             result = subprocess.run(
                 ["bash", "-n"],

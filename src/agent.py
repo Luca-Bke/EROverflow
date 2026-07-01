@@ -70,6 +70,15 @@ class Agent:
 
         response_result = await self._backend.handle_request_iteration(message, updater)
 
+        # Defensive: the backend now always returns a JSON string or raises, so
+        # a None here means a contract violation — fail loudly with a clear
+        # message instead of the cryptic "json object ... not NoneType".
+        if response_result is None:
+            raise ValueError(
+                "Backend returned no response (None) — see agent logs for the "
+                "underlying cause."
+            )
+
         self._memory_log.append(self._backend._memory.snapshot_memory())
 
         if (utils.is_final_response(response_result) or

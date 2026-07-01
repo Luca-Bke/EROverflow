@@ -4,13 +4,14 @@
   config_schema: {
     type: "object",
     properties: {
+      llmhub_apikey: { type: "string", secret: true },
       academiccloud_api_key: { type: "string", secret: true },
       openrouter_api_key: { type: "string", secret: true },
       tracing_key: { type: "string", secret: true },
       tracing_project: { type: "string", secret: false },
       tracing_endpoint: { type: "string", secret: false}
     },
-    required: ["academiccloud_api_key"],
+    required: ["llmhub_apikey"],
     additionalProperties: false,
   },
 
@@ -25,6 +26,7 @@
     entrypoint: "uv run python src/server.py --host 0.0.0.0 --port 9010",
 
     env: {
+      LLMHUB_APIKEY: "${config.llmhub_apikey}",
       ACADEMICCLOUD_API_KEY: "${config.academiccloud_api_key}",
       OPENROUTER_API_KEY: "${config.openrouter_api_key}",
       LANGSMITH_API_KEY: "${config.tracing_key}",
