@@ -81,7 +81,7 @@ class CriticAgent(AbstractAgent):
             pass
         else:
             raise terminal_bench_format_exception(
-                "LLM response JSON missing 'kind' field or has unknown"
+                "LLM response JSON missing 'kind' field or has unknown "
                 f"kind: {response_text}"
             )
 

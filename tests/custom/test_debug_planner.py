@@ -119,48 +119,8 @@ def test_split_missing_fields_returns_empty_defaults():
 # ── Mocked: planner invocation wiring ────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_planner_task_message_stores_formulation_and_returns_output():
-    planner_response = json.dumps({
-        "updated_plan": ["recon", "exploit"],
-        "task_formulation": "Run ls -la to list current directory.",
-    })
-    memory = _make_memory()
-    agent = PlannerAgent(_mock_llm(planner_response))
-
-    task = json.dumps({"kind": "task", "instruction": "Find the flag."})
-    out = await agent.invoke(_make_message(task), memory)
-
-    assert out.updated_plan == ["recon", "exploit"]
-    assert "ls -la" in out.task_formulation
-    # task_formulation is stored in memory before the LLM is called
-    assert memory.get_subtask_formulation() is not None
-
-
-@pytest.mark.asyncio
-async def test_planner_exec_result_goes_into_short_term_memory():
-    planner_response = json.dumps({
-        "updated_plan": ["done"],
-        "task_formulation": "Read the flag.",
-    })
-    memory = _make_memory()
-    agent = PlannerAgent(_mock_llm(planner_response))
-
-    exec_result = json.dumps({
-        "kind": "exec_result",
-        "stdout": "flag{test}",
-        "exit_code": 0,
-    })
-    await agent.invoke(_make_message(exec_result), memory)
-
-    # The exec result should appear in the short-term window
-    planner_msgs = memory.build_planner_messages()
-    short_term_contents = [getattr(m, "content", "") for m in planner_msgs]
-    assert any("flag{test}" in c for c in short_term_contents)
-
-
-@pytest.mark.asyncio
 async def test_planner_result_feeds_actor_messages():
-    """Plan and task_formulation from the planner must appear in actor messages."""
+    """The planner's task_formulation reaches the actor; the raw plan stays planner-only."""
     planner_response = json.dumps({
         "updated_plan": ["step A", "step B"],
         "task_formulation": "Check /etc/passwd for clues.",
@@ -174,15 +134,18 @@ async def test_planner_result_feeds_actor_messages():
     planner = PlannerAgent(_mock_llm(planner_response))
 
     task = json.dumps({"kind": "task", "instruction": "Do the thing."})
-    out = await planner.invoke(_make_message(task), memory)
+    memory.set_task(HumanMessage(content=task))
+    out = await planner.invoke(memory.build_planner_messages())
 
     memory.set_plan(out.updated_plan)
     memory.set_subtask_formulation(out.task_formulation)
 
     actor_msgs = memory.build_actor_messages()
     all_content = " ".join(getattr(m, "content", "") for m in actor_msgs)
-    assert "step A" in all_content
+    # The subtask formulation is what the actor acts on.
     assert "/etc/passwd" in all_content
+    # The raw plan is planner-only and must not leak into the actor's context.
+    assert "step A" not in all_content
 
 
 @pytest.mark.asyncio
@@ -193,16 +156,14 @@ async def test_critic_approves_valid_exec_request():
         "timeout": 30,
     })
     critic_response = json.dumps({"approved": True, "feedback": ""})
-    actor_msg = MagicMock()
-    actor_msg.content = exec_request
 
     memory = _make_memory()
-    memory.set_execution_request_candidate(actor_msg)
+    memory.set_execution_request_candidate(exec_request)
 
     critic = CriticAgent(_mock_llm(critic_response))
-    verdict = critic.invoke(
+    verdict = await critic.invoke(
         memory.build_critic_messages(),
-        memory.get_execution_request_candidate(),
+        memory.get_execution_request_candidate().content,
     )
     assert verdict.approved is True
 

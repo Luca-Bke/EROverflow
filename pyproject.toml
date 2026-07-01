@@ -29,3 +29,6 @@ packages = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: requires a running agent server (see --agent-url); skipped offline",
+]
