@@ -12,6 +12,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message
+from langsmith import traceable
 from openai import RateLimitError
 
 from agents.actor import ActorAgent
@@ -30,6 +31,7 @@ class TerminalBenchAgent:
     All configuration is injected via the constructor; nothing is read from
     module-level globals or environment variables except the LangSmith toggle.
     """
+
 
     def __init__(
         self,
@@ -54,6 +56,35 @@ class TerminalBenchAgent:
         self._actor_agent = ActorAgent(llm_client)
         self._turn_count = 0
 
+    @traceable(name="Actor Critic Loop", run_type="chain")
+    async def __run_actor_critic_loop__(self):
+        actor_messages = self._memory.build_actor_messages()
+        print(f"actor messages:\n{actor_messages}\n")
+        actor_result = await self._actor_agent.invoke(actor_messages)
+        exec_request = getattr(actor_result, "content")
+        self._memory.set_execution_request_candidate(exec_request)
+
+        print(f"actor result:\n{actor_result}\n")
+
+        critic_messages = self._memory.build_critic_messages()
+        print(f"critic messages:\n{critic_messages}\n")
+
+        exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
+        print(f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
+        critic_result = await self._critic_agent.invoke(
+            critic_messages, exec_request)
+
+        print(f"critic result:\n{critic_result}\n")
+
+        if (critic_result.approved):  # if the critic accepts
+            exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
+            print(f"Approved exec request: {exec_request}")
+            self._memory.add(AIMessage(content=exec_request))
+            return exec_request
+        else:
+            self._memory.set_critic_feedback(critic_result.feedback)
+            return None
+    @traceable(name="Turn", run_type="chain")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         self._turn_count += 1
@@ -86,33 +117,9 @@ class TerminalBenchAgent:
             critic_actor_rounds = 0
             while critic_actor_rounds < self._max_critic_actor_rounds:
                 critic_actor_rounds += 1
-
-                actor_messages = self._memory.build_actor_messages()
-                print(f"actor messages:\n{actor_messages}\n")
-                actor_result = await self._actor_agent.invoke(actor_messages)
-                exec_request = getattr(actor_result, "content")
-                self._memory.set_execution_request_candidate(exec_request)
-
-                print(f"actor result:\n{actor_result}\n")
-
-                critic_messages = self._memory.build_critic_messages()
-                print(f"critic messages:\n{critic_messages}\n")
-
-                exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
-                print(f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
-                critic_result = await self._critic_agent.invoke(
-                    critic_messages, exec_request)
-
-                print(f"critic result:\n{critic_result}\n")
-
-                if (critic_result.approved):  # if the critic accepts
-                    exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
-                    print(f"Approved exec request: {exec_request}")
-                    self._memory.add(AIMessage(content=exec_request))
-                    return exec_request
-                else:
-                    self._memory.set_critic_feedback(critic_result.feedback)
-
+                feedback = await self.__run_actor_critic_loop__()
+                if feedback is not None:
+                    return feedback
         except RateLimitError:
             print("Rate limit was previously hit; returning final.")
             return json.dumps({"kind": "final"})
