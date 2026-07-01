@@ -117,7 +117,19 @@ class TerminalBenchAgent:
             print("Rate limit was previously hit; returning final.")
             return json.dumps({"kind": "final"})
         except Exception as e:
+            # Surface the real cause instead of silently returning None (which
+            # downstream turned into a misleading "json object ... not NoneType"
+            # error). The full traceback is logged; the executor reports {e}.
             print(''.join(traceback.format_exception(type(e), e, e.__traceback__)))
+            raise
+
+        # The critic never approved a candidate within the round budget. Return
+        # a valid final rather than None so the caller never receives None.
+        print(
+            f"Critic did not approve any candidate within "
+            f"{self._max_critic_actor_rounds} rounds; returning final."
+        )
+        return json.dumps({"kind": "final"})
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         return await self.handle_request_iteration(message, updater)
