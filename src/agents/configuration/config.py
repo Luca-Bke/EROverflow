@@ -200,6 +200,10 @@ LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
 L3S_MODEL = "ollama/qwen3.6:27b"
 L3S_ENDPOINT = "https://inference.kbs.uni-hannover.de/v1"  #"https://brrr.kbs.uni-hannover.de/v1"
 
+# Per-request timeout (seconds) — backstop against a hung request. A healthy
+# call returns well within this; on expiry the attempt is retried via backoff.
+L3S_REQUEST_TIMEOUT = 120
+
 # ── AcademicCloud ────────────────────────────────────────────────────────────
 
 ACADEMICCLOUD_MODEL = "qwen3.6-35b-a3b"

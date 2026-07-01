@@ -18,8 +18,14 @@ from agents.terminal_bench_supplementary import utils
 
 def _build_llm_client() -> AbstractLLMClient:
     if config.LLM_PROVIDER == "l3s":
-        return L3SLLMClient(model=config.L3S_MODEL,
-                            base_url=config.L3S_ENDPOINT)
+        return L3SLLMClient(
+            model=config.L3S_MODEL,
+            base_url=config.L3S_ENDPOINT,
+            timeout=config.L3S_REQUEST_TIMEOUT,
+            backoff_enabled=config.ENABLE_RATE_LIMIT_BACKOFF,
+            backoff_max_retries=config.BACKOFF_MAX_RETRIES,
+            backoff_base_delay=config.BACKOFF_BASE_DELAY,
+        )
     if config.LLM_PROVIDER == "academiccloud":
         return AcademicCloudLLMClient(
             model=config.ACADEMICCLOUD_MODEL,
