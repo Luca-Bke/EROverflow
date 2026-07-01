@@ -49,10 +49,9 @@ class L3SLLMClient(AbstractLLMClient):
 
     async def invoke_async(self, messages: list[Any]) -> Any:
         llm = self._create_llm()
-        loop = asyncio.get_running_loop()
+        # loop = asyncio.get_running_loop()
         try:
-            return await loop.run_in_executor(None,
-                                              lambda: llm.invoke(messages))
+            return await llm.ainvoke(messages)
         except RateLimitError as e:
             self._rate_limited = True
             self._retry_log.append({"exhausted": True, "error": str(e)[:300]})

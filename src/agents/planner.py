@@ -6,6 +6,7 @@ from typing import Any, override
 
 from a2a.types import Message
 from langchain_core.messages import BaseMessage, HumanMessage
+from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
@@ -52,6 +53,7 @@ class PlannerAgent(AbstractAgent):
         return PlannerOutput(updated_plan=plan, task_formulation=task)
 
     @override
+    @traceable(name="Planner", run_type="chain")
     async def invoke(self, messages: list[BaseMessage]) -> PlannerOutput:  # type: ignore[override]
         response = await self._llm_client.invoke_async(messages)
         return self._split_agent_response(response)
