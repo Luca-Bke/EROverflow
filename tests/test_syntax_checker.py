@@ -1,28 +1,50 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+from langchain_core.messages import SystemMessage
+
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.response_format_checker import ResponseFormatChecker
+from agents.critic import CriticAgent, CriticVerdict
+from agents.planner import PlannerOutput
 from a2a.types import Message, Part, TextPart
 
 
 @pytest.fixture
 def agent():
-    mock_client = MagicMock()
-    mock_client.invoke_async = AsyncMock()
-    mock_client.rate_limited = MagicMock(return_value=False)
-    mock_client.retry_log = MagicMock(return_value=[])
-    with patch.dict("agents.terminal_bench.LLM_PROVIDER_DICTIONARY", {
-        "openrouter": lambda **_: mock_client,
-        "academiccloud": lambda **_: mock_client,
-    }):
-        a = TerminalBenchAgent()
-    return a
+    """A TerminalBenchAgent whose sub-agents are stubbed per test — no LLM."""
+    client = MagicMock()
+    client.invoke_async = AsyncMock()
+    client.rate_limited = MagicMock(return_value=False)
+    client.retry_log = MagicMock(return_value=[])
+    return TerminalBenchAgent(
+        llm_client=client,
+        planner_system_prompt=SystemMessage(content="planner"),
+        actor_system_prompt=SystemMessage(content="actor"),
+        critic_system_prompt=SystemMessage(content="critic"),
+        max_critic_actor_rounds=10,
+        short_term_window=10,
+    )
 
 
-# --- ExecRequestChecker.check_command_syntax ---
+def _make_message(text: str) -> Message:
+    return Message(
+        kind="message",
+        role="user",
+        parts=[Part(root=TextPart(kind="text", text=text))],
+        message_id="test-id",
+    )
+
+
+def _ai(content: str):
+    """A stand-in for an actor result message carrying `.content`."""
+    return MagicMock(content=content)
+
+
+# --- ExecRequestChecker.check_command_syntax (no LLM) --------------------------
 
 def test_valid_command_passes():
     ExecRequestChecker.check_command_syntax("echo hello")
@@ -76,79 +98,67 @@ def test_fork_bomb_raises():
         ExecRequestChecker.check_command_syntax(":(){ :|:& };:")
 
 
-def test_empty_command_in_exec_request_raises(agent):
+# --- CriticAgent._validate_response (static, no LLM) --------------------------
+
+def test_empty_command_in_exec_request_raises():
     payload = json.dumps(
         {"kind": "exec_request", "command": "", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-def test_missing_command_field_raises(agent):
+def test_missing_command_field_raises():
     payload = json.dumps({"kind": "exec_request", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-# --- validate_response ---
-
-def test_valid_exec_request_passes(agent):
+def test_valid_exec_request_passes():
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hello", "timeout": 30})
-    result = agent.validate_response(payload)
+    result = CriticAgent._validate_response(payload)
     assert result["kind"] == "exec_request"
 
 
-def test_invalid_command_in_exec_request_raises(agent):
+def test_invalid_command_in_exec_request_raises():
     payload = json.dumps(
         {"kind": "exec_request", "command": "if then done", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-def test_final_passes(agent):
+def test_final_passes():
     payload = json.dumps({"kind": "final"})
-    result = agent.validate_response(payload)
+    result = CriticAgent._validate_response(payload)
     assert result["kind"] == "final"
 
 
-def test_plan_passes(agent):
-    payload = json.dumps({"kind": "plan", "steps": ["explore", "build", "verify"]})
-    result = agent.validate_response(payload)
-    assert result["kind"] == "plan"
-
-
-def test_empty_plan_raises(agent):
-    payload = json.dumps({"kind": "plan", "steps": []})
-    with pytest.raises(terminal_bench_format_exception, match="non-empty 'steps'"):
-        agent.validate_response(payload)
-
-
-def test_invalid_json_raises(agent):
+def test_invalid_json_raises():
     with pytest.raises(terminal_bench_format_exception, match="not valid JSON"):
-        agent.validate_response("not json")
+        CriticAgent._validate_response("not json")
 
 
-def test_unknown_kind_raises(agent):
+def test_unknown_kind_raises():
     payload = json.dumps({"kind": "unknown_thing"})
     with pytest.raises(terminal_bench_format_exception, match="unknown kind"):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-def test_invalid_timeout_raises(agent):
+def test_invalid_timeout_raises():
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hi", "timeout": -1})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-def test_zero_timeout_raises(agent):
+def test_zero_timeout_raises():
     payload = json.dumps(
         {"kind": "exec_request", "command": "echo hi", "timeout": 0})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        agent.validate_response(payload)
+        CriticAgent._validate_response(payload)
 
 
-# --- ResponseFormatChecker deterministic normalisation ---
+# --- ResponseFormatChecker deterministic normalisation (no LLM) ---------------
 
 def test_clean_json_passes_through():
     payload = json.dumps({"kind": "exec_request", "command": "ls", "timeout": 30})
@@ -180,63 +190,42 @@ def test_garbage_raises_not_valid_json():
         ResponseFormatChecker.check_agent_response_valid_json("totally not json")
 
 
-# --- retry logic in handle_request_iteration ---
-
-def _make_message(text: str) -> Message:
-    return Message(
-        kind="message",
-        role="user",
-        parts=[Part(root=TextPart(kind="text", text=text))],
-        message_id="test-id",
-    )
-
-
-def _mock_checker(agent, approved: bool = True, feedback: str = "send one command"):
-    """Replace the checker agent with a deterministic stub (no real LLM)."""
-    from agents.critic import CheckVerdict
-    agent._checker_agent.review = AsyncMock(
-        return_value=CheckVerdict(approved=approved, feedback=feedback))
-
+# --- critic-loop retry semantics in handle_request_iteration ------------------
 
 async def test_retry_succeeds_on_second_attempt(agent):
     bad = "not valid json"
     good = json.dumps(
         {"kind": "exec_request", "command": "echo hello", "timeout": 30})
 
-    call_count = 0
-
-    async def fake_invoke(messages):
-        nonlocal call_count
-        call_count += 1
-        mock = MagicMock()
-        mock.content = bad if call_count == 1 else good
-        return mock
-
-    agent._llm_client.invoke_async = fake_invoke
-    _mock_checker(agent, approved=True)
+    agent._planner_agent.invoke = AsyncMock(
+        return_value=PlannerOutput(updated_plan=["step"], task_formulation="do x"))
+    agent._actor_agent.invoke = AsyncMock(side_effect=[_ai(bad), _ai(good)])
+    agent._critic_agent.invoke = AsyncMock(side_effect=[
+        CriticVerdict(approved=False, feedback="send valid JSON"),
+        CriticVerdict(approved=True, feedback=""),
+    ])
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
-    updater = MagicMock()
-    updater.start_work = AsyncMock()
-
-    result = await agent.handle_request_iteration(_make_message(exec_payload), updater)
+    result = await agent.handle_request_iteration(
+        _make_message(exec_payload), MagicMock())
 
     assert result == good
-    assert call_count == 2
+    assert agent._actor_agent.invoke.await_count == 2
 
 
 async def test_retry_fails_after_max_attempts(agent):
-    async def fake_invoke(messages):
-        mock = MagicMock()
-        mock.content = "not valid json"
-        return mock
+    bad = "not valid json"
 
-    agent._llm_client.invoke_async = fake_invoke
-    _mock_checker(agent, approved=False)
+    agent._planner_agent.invoke = AsyncMock(
+        return_value=PlannerOutput(updated_plan=["step"], task_formulation="do x"))
+    agent._actor_agent.invoke = AsyncMock(return_value=_ai(bad))
+    agent._critic_agent.invoke = AsyncMock(
+        return_value=CriticVerdict(approved=False, feedback="still wrong"))
 
     exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
-    updater = MagicMock()
-    updater.start_work = AsyncMock()
+    result = await agent.handle_request_iteration(
+        _make_message(exec_payload), MagicMock())
 
-    with pytest.raises(terminal_bench_format_exception):
-        await agent.handle_request_iteration(_make_message(exec_payload), updater)
+    # Critic never approves → loop exhausts and no request is returned.
+    assert result is None
+    assert agent._actor_agent.invoke.await_count == agent._max_critic_actor_rounds
