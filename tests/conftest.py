@@ -37,3 +37,4 @@ def agent(request):
         pytest.skip(f"Could not connect to agent at {url}: {e}")
 
     return url
+
