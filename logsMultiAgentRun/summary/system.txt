@@ -1,0 +1,8 @@
+2026-07-02T07:02:11.2730000Z Evaluating summary.if
+2026-07-02T07:02:11.2730000Z Evaluating: success()
+2026-07-02T07:02:11.2730000Z Result: true
+2026-07-02T07:02:11.2840000Z Job is waiting for a hosted runner to come online.
+2026-07-02T07:02:11.2780000Z Requested labels: ubuntu-latest
+2026-07-02T07:02:11.2780000Z Job defined at: CShark-4891/terminal-bench-leaderboard/.github/workflows/run-scenario.yml@refs/heads/main
+2026-07-02T07:02:11.2780000Z Waiting for a runner to pick up this job...
+2026-07-02T07:02:11.2850000Z Job is about to start running on the hosted runner: GitHub Actions 1000000449

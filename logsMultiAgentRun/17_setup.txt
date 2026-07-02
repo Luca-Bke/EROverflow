@@ -1,0 +1,159 @@
+﻿2026-07-01T23:03:41.8381999Z Current runner version: '2.335.1'
+2026-07-01T23:03:41.8409529Z ##[group]Runner Image Provisioner
+2026-07-01T23:03:41.8410728Z Hosted Compute Agent
+2026-07-01T23:03:41.8411729Z Version: 20260624.560
+2026-07-01T23:03:41.8412656Z Commit: 925d229a51159bc391ae97e54a2dd1fe20af789d
+2026-07-01T23:03:41.8413529Z Build Date: 2026-06-24T18:26:47Z
+2026-07-01T23:03:41.8414342Z Worker ID: {89755b54-82c2-46eb-b7a9-ee668c3bad1a}
+2026-07-01T23:03:41.8415085Z Azure Region: eastus2
+2026-07-01T23:03:41.8415742Z ##[endgroup]
+2026-07-01T23:03:41.8417244Z ##[group]Operating System
+2026-07-01T23:03:41.8418072Z Ubuntu
+2026-07-01T23:03:41.8418696Z 24.04.4
+2026-07-01T23:03:41.8419229Z LTS
+2026-07-01T23:03:41.8419777Z ##[endgroup]
+2026-07-01T23:03:41.8420466Z ##[group]Runner Image
+2026-07-01T23:03:41.8421089Z Image: ubuntu-24.04
+2026-07-01T23:03:41.8421730Z Version: 20260628.225.1
+2026-07-01T23:03:41.8423109Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260628.225/images/ubuntu/Ubuntu2404-Readme.md
+2026-07-01T23:03:41.8424644Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260628.225
+2026-07-01T23:03:41.8425687Z ##[endgroup]
+2026-07-01T23:03:41.8426922Z ##[group]GITHUB_TOKEN Permissions
+2026-07-01T23:03:41.8429741Z Contents: read
+2026-07-01T23:03:41.8430464Z Metadata: read
+2026-07-01T23:03:41.8431061Z Packages: read
+2026-07-01T23:03:41.8431621Z ##[endgroup]
+2026-07-01T23:03:41.8433931Z Secret source: Actions
+2026-07-01T23:03:41.8434735Z Prepare workflow directory
+2026-07-01T23:03:41.8978143Z Prepare all required actions
+2026-07-01T23:03:41.9018194Z Getting action download info
+2026-07-01T23:03:42.1034241Z Download action repository 'actions/checkout@v6' (SHA:df4cb1c069e1874edd31b4311f1884172cec0e10)
+2026-07-01T23:03:42.2540831Z Complete job name: setup
+2026-07-01T23:03:42.3397623Z ##[group]Run actions/checkout@v6
+2026-07-01T23:03:42.3398545Z with:
+2026-07-01T23:03:42.3399078Z   repository: CShark-4891/terminal-bench-leaderboard
+2026-07-01T23:03:42.3404374Z   token: ***
+2026-07-01T23:03:42.3404848Z   ssh-strict: true
+2026-07-01T23:03:42.3405316Z   ssh-user: git
+2026-07-01T23:03:42.3405772Z   persist-credentials: true
+2026-07-01T23:03:42.3406256Z   clean: true
+2026-07-01T23:03:42.3406702Z   sparse-checkout-cone-mode: true
+2026-07-01T23:03:42.3407219Z   fetch-depth: 1
+2026-07-01T23:03:42.3407901Z   fetch-tags: false
+2026-07-01T23:03:42.3408349Z   show-progress: true
+2026-07-01T23:03:42.3408796Z   lfs: false
+2026-07-01T23:03:42.3409210Z   submodules: false
+2026-07-01T23:03:42.3409662Z   set-safe-directory: true
+2026-07-01T23:03:42.3410486Z env:
+2026-07-01T23:03:42.3410890Z   NUM_SHARDS: 16
+2026-07-01T23:03:42.3411321Z ##[endgroup]
+2026-07-01T23:03:42.4484794Z Syncing repository: CShark-4891/terminal-bench-leaderboard
+2026-07-01T23:03:42.4487975Z ##[group]Getting Git version info
+2026-07-01T23:03:42.4489456Z Working directory is '/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard'
+2026-07-01T23:03:42.4491493Z [command]/usr/bin/git version
+2026-07-01T23:03:42.4536835Z git version 2.54.0
+2026-07-01T23:03:42.4561088Z ##[endgroup]
+2026-07-01T23:03:42.4576512Z Temporarily overriding HOME='/home/runner/work/_temp/a4520685-a375-44b6-8ddb-92c39bfe3512' before making global git config changes
+2026-07-01T23:03:42.4585608Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-01T23:03:42.4600133Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-01T23:03:42.4651658Z Deleting the contents of '/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard'
+2026-07-01T23:03:42.4655913Z ##[group]Determining repository object format
+2026-07-01T23:03:42.4658345Z ##[endgroup]
+2026-07-01T23:03:42.4659624Z ##[group]Initializing the repository
+2026-07-01T23:03:42.4665333Z [command]/usr/bin/git init /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-01T23:03:42.4778164Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-07-01T23:03:42.4781032Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-07-01T23:03:42.4782976Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-07-01T23:03:42.4784401Z hint: call:
+2026-07-01T23:03:42.4785226Z hint:
+2026-07-01T23:03:42.4786242Z hint: 	git config --global init.defaultBranch <name>
+2026-07-01T23:03:42.4787566Z hint:
+2026-07-01T23:03:42.4788811Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-07-01T23:03:42.4790574Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-07-01T23:03:42.4791983Z hint:
+2026-07-01T23:03:42.4792830Z hint: 	git branch -m <name>
+2026-07-01T23:03:42.4794787Z hint:
+2026-07-01T23:03:42.4796076Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-07-01T23:03:42.4798659Z Initialized empty Git repository in /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/
+2026-07-01T23:03:42.4802762Z [command]/usr/bin/git remote add origin https://github.com/CShark-4891/terminal-bench-leaderboard
+2026-07-01T23:03:42.4878974Z ##[endgroup]
+2026-07-01T23:03:42.4880236Z ##[group]Disabling automatic garbage collection
+2026-07-01T23:03:42.4885055Z [command]/usr/bin/git config --local gc.auto 0
+2026-07-01T23:03:42.4925697Z ##[endgroup]
+2026-07-01T23:03:42.4927130Z ##[group]Setting up auth
+2026-07-01T23:03:42.4928425Z Removing SSH command configuration
+2026-07-01T23:03:42.4935390Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-01T23:03:42.4986078Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-01T23:03:42.5371480Z Removing HTTP extra header
+2026-07-01T23:03:42.5387872Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-01T23:03:42.5420351Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-01T23:03:42.5666060Z Removing includeIf entries pointing to credentials config files
+2026-07-01T23:03:42.5673672Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-01T23:03:42.5714339Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-01T23:03:42.5967880Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-07-01T23:03:42.6013480Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:42.6052190Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:42.6093255Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:42.6132981Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:42.6167741Z ##[endgroup]
+2026-07-01T23:03:42.6168512Z ##[group]Fetching the repository
+2026-07-01T23:03:42.6178437Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c401124b5e7532214e8e73ada10228d5f224c3ee:refs/remotes/origin/main
+2026-07-01T23:03:42.8344689Z From https://github.com/CShark-4891/terminal-bench-leaderboard
+2026-07-01T23:03:42.8346418Z  * [new ref]         c401124b5e7532214e8e73ada10228d5f224c3ee -> origin/main
+2026-07-01T23:03:42.8387840Z [command]/usr/bin/git branch --list --remote origin/main
+2026-07-01T23:03:42.8439411Z   origin/main
+2026-07-01T23:03:42.8450533Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-07-01T23:03:42.8482778Z c401124b5e7532214e8e73ada10228d5f224c3ee
+2026-07-01T23:03:42.8488396Z ##[endgroup]
+2026-07-01T23:03:42.8489793Z ##[group]Determining the checkout info
+2026-07-01T23:03:42.8491363Z ##[endgroup]
+2026-07-01T23:03:42.8496539Z [command]/usr/bin/git sparse-checkout disable
+2026-07-01T23:03:42.8553919Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-07-01T23:03:42.8593107Z ##[group]Checking out the ref
+2026-07-01T23:03:42.8598038Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-07-01T23:03:42.8749330Z Switched to a new branch 'main'
+2026-07-01T23:03:42.8750977Z branch 'main' set up to track 'origin/main'.
+2026-07-01T23:03:42.8759237Z ##[endgroup]
+2026-07-01T23:03:42.8817878Z [command]/usr/bin/git log -1 --format=%H
+2026-07-01T23:03:42.8855037Z c401124b5e7532214e8e73ada10228d5f224c3ee
+2026-07-01T23:03:42.9141726Z ##[group]Run echo "shard_indices=$(seq 0 $(( 16 - 1 )) | jq -sc .)" >> "$GITHUB_OUTPUT"
+2026-07-01T23:03:42.9142986Z [36;1mecho "shard_indices=$(seq 0 $(( 16 - 1 )) | jq -sc .)" >> "$GITHUB_OUTPUT"[0m
+2026-07-01T23:03:42.9306882Z shell: /usr/bin/bash -e {0}
+2026-07-01T23:03:42.9307888Z env:
+2026-07-01T23:03:42.9308403Z   NUM_SHARDS: 16
+2026-07-01T23:03:42.9308927Z ##[endgroup]
+2026-07-01T23:03:42.9621493Z Post job cleanup.
+2026-07-01T23:03:43.0544760Z [command]/usr/bin/git version
+2026-07-01T23:03:43.0599092Z git version 2.54.0
+2026-07-01T23:03:43.0634649Z Temporarily overriding HOME='/home/runner/work/_temp/94f1d46e-7b86-4326-9e0d-298366d992e1' before making global git config changes
+2026-07-01T23:03:43.0637171Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-01T23:03:43.0641994Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-01T23:03:43.0682266Z Removing SSH command configuration
+2026-07-01T23:03:43.0699176Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-01T23:03:43.0759289Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-01T23:03:43.1037780Z Removing HTTP extra header
+2026-07-01T23:03:43.1042950Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-01T23:03:43.1089969Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-01T23:03:43.1383912Z Removing includeIf entries pointing to credentials config files
+2026-07-01T23:03:43.1386005Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-01T23:03:43.1426727Z includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path
+2026-07-01T23:03:43.1430237Z includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path
+2026-07-01T23:03:43.1432424Z includeif.gitdir:/github/workspace/.git.path
+2026-07-01T23:03:43.1433762Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-07-01T23:03:43.1439437Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path
+2026-07-01T23:03:43.1472803Z /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1486393Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1549286Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path
+2026-07-01T23:03:43.1578601Z /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1591648Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1634169Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-07-01T23:03:43.1664765Z /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1674514Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1716919Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-07-01T23:03:43.1746603Z /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1760150Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config
+2026-07-01T23:03:43.1803961Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-01T23:03:43.2096419Z Removing credentials config '/home/runner/work/_temp/git-credentials-f2abd9cc-6a09-46a2-9525-058bb20773fe.config'
+2026-07-01T23:03:43.2258639Z Evaluate and set job outputs
+2026-07-01T23:03:43.2265377Z Set output 'shard_indices'
+2026-07-01T23:03:43.2268066Z Cleaning up orphan processes

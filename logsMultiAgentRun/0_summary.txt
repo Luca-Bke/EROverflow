@@ -1,0 +1,551 @@
+﻿2026-07-02T07:02:13.4531790Z Current runner version: '2.335.1'
+2026-07-02T07:02:13.4557487Z ##[group]Runner Image Provisioner
+2026-07-02T07:02:13.4558443Z Hosted Compute Agent
+2026-07-02T07:02:13.4559062Z Version: 20260611.554
+2026-07-02T07:02:13.4559773Z Commit: 5e0782fdc9014723d3be820dd114dd31555c2bd1
+2026-07-02T07:02:13.4560715Z Build Date: 2026-06-11T21:40:46Z
+2026-07-02T07:02:13.4561407Z Worker ID: {9717c3cd-351a-44f9-8622-7b3441f279e3}
+2026-07-02T07:02:13.4562254Z Azure Region: centralus
+2026-07-02T07:02:13.4562883Z ##[endgroup]
+2026-07-02T07:02:13.4564687Z ##[group]Operating System
+2026-07-02T07:02:13.4565361Z Ubuntu
+2026-07-02T07:02:13.4565918Z 24.04.4
+2026-07-02T07:02:13.4566547Z LTS
+2026-07-02T07:02:13.4567084Z ##[endgroup]
+2026-07-02T07:02:13.4567732Z ##[group]Runner Image
+2026-07-02T07:02:13.4568398Z Image: ubuntu-24.04
+2026-07-02T07:02:13.4569023Z Version: 20260622.220.1
+2026-07-02T07:02:13.4570378Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260622.220/images/ubuntu/Ubuntu2404-Readme.md
+2026-07-02T07:02:13.4572163Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260622.220
+2026-07-02T07:02:13.4573187Z ##[endgroup]
+2026-07-02T07:02:13.4574664Z ##[group]GITHUB_TOKEN Permissions
+2026-07-02T07:02:13.4576970Z Contents: write
+2026-07-02T07:02:13.4577596Z Metadata: read
+2026-07-02T07:02:13.4578260Z ##[endgroup]
+2026-07-02T07:02:13.4580384Z Secret source: Actions
+2026-07-02T07:02:13.4581839Z Prepare workflow directory
+2026-07-02T07:02:13.5344377Z Prepare all required actions
+2026-07-02T07:02:13.5397561Z Getting action download info
+2026-07-02T07:02:13.8078724Z Download action repository 'actions/checkout@v6' (SHA:df4cb1c069e1874edd31b4311f1884172cec0e10)
+2026-07-02T07:02:14.1057139Z Download action repository 'actions/download-artifact@v8' (SHA:3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c)
+2026-07-02T07:02:14.5944249Z Complete job name: summary
+2026-07-02T07:02:14.6611448Z ##[group]Run actions/checkout@v6
+2026-07-02T07:02:14.6612388Z with:
+2026-07-02T07:02:14.6612904Z   repository: CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:14.6617346Z   token: ***
+2026-07-02T07:02:14.6617791Z   ssh-strict: true
+2026-07-02T07:02:14.6618229Z   ssh-user: git
+2026-07-02T07:02:14.6618675Z   persist-credentials: true
+2026-07-02T07:02:14.6619156Z   clean: true
+2026-07-02T07:02:14.6619592Z   sparse-checkout-cone-mode: true
+2026-07-02T07:02:14.6620100Z   fetch-depth: 1
+2026-07-02T07:02:14.6620521Z   fetch-tags: false
+2026-07-02T07:02:14.6621152Z   show-progress: true
+2026-07-02T07:02:14.6621594Z   lfs: false
+2026-07-02T07:02:14.6622011Z   submodules: false
+2026-07-02T07:02:14.6622453Z   set-safe-directory: true
+2026-07-02T07:02:14.6623124Z env:
+2026-07-02T07:02:14.6623515Z   NUM_SHARDS: 16
+2026-07-02T07:02:14.6623939Z ##[endgroup]
+2026-07-02T07:02:14.7629211Z Syncing repository: CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:14.7631720Z ##[group]Getting Git version info
+2026-07-02T07:02:14.7632691Z Working directory is '/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard'
+2026-07-02T07:02:14.7633981Z [command]/usr/bin/git version
+2026-07-02T07:02:14.7693848Z git version 2.54.0
+2026-07-02T07:02:14.7715272Z ##[endgroup]
+2026-07-02T07:02:14.7729359Z Temporarily overriding HOME='/home/runner/work/_temp/ec7e4214-652e-434a-afc5-56d466b15cd3' before making global git config changes
+2026-07-02T07:02:14.7731709Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-02T07:02:14.7735098Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-02T07:02:14.7782589Z Deleting the contents of '/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard'
+2026-07-02T07:02:14.7786299Z ##[group]Determining repository object format
+2026-07-02T07:02:14.7788753Z ##[endgroup]
+2026-07-02T07:02:14.7789549Z ##[group]Initializing the repository
+2026-07-02T07:02:14.7795401Z [command]/usr/bin/git init /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-02T07:02:14.7898574Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-07-02T07:02:14.7900132Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-07-02T07:02:14.7901453Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-07-02T07:02:14.7902632Z hint: call:
+2026-07-02T07:02:14.7903112Z hint:
+2026-07-02T07:02:14.7903648Z hint: 	git config --global init.defaultBranch <name>
+2026-07-02T07:02:14.7904592Z hint:
+2026-07-02T07:02:14.7905510Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-07-02T07:02:14.7907010Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-07-02T07:02:14.7908183Z hint:
+2026-07-02T07:02:14.7908847Z hint: 	git branch -m <name>
+2026-07-02T07:02:14.7909582Z hint:
+2026-07-02T07:02:14.7910798Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-07-02T07:02:14.7912778Z Initialized empty Git repository in /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/
+2026-07-02T07:02:14.7915983Z [command]/usr/bin/git remote add origin https://github.com/CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:14.7958386Z ##[endgroup]
+2026-07-02T07:02:14.7959576Z ##[group]Disabling automatic garbage collection
+2026-07-02T07:02:14.7963039Z [command]/usr/bin/git config --local gc.auto 0
+2026-07-02T07:02:14.7992595Z ##[endgroup]
+2026-07-02T07:02:14.7994348Z ##[group]Setting up auth
+2026-07-02T07:02:14.7995421Z Removing SSH command configuration
+2026-07-02T07:02:14.8000058Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-02T07:02:14.8035838Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-02T07:02:14.8370701Z Removing HTTP extra header
+2026-07-02T07:02:14.8376573Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-02T07:02:14.8409248Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-02T07:02:14.8633487Z Removing includeIf entries pointing to credentials config files
+2026-07-02T07:02:14.8639662Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-02T07:02:14.8672192Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-02T07:02:14.8909630Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-07-02T07:02:14.8947267Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:14.8976814Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:14.9010089Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:14.9042519Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:14.9070397Z ##[endgroup]
+2026-07-02T07:02:14.9072056Z ##[group]Fetching the repository
+2026-07-02T07:02:14.9079827Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c401124b5e7532214e8e73ada10228d5f224c3ee:refs/remotes/origin/main
+2026-07-02T07:02:15.2664518Z From https://github.com/CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:15.2666752Z  * [new ref]         c401124b5e7532214e8e73ada10228d5f224c3ee -> origin/main
+2026-07-02T07:02:15.2710460Z [command]/usr/bin/git branch --list --remote origin/main
+2026-07-02T07:02:15.2738135Z   origin/main
+2026-07-02T07:02:15.2746326Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-07-02T07:02:15.2772024Z c401124b5e7532214e8e73ada10228d5f224c3ee
+2026-07-02T07:02:15.2777613Z ##[endgroup]
+2026-07-02T07:02:15.2779432Z ##[group]Determining the checkout info
+2026-07-02T07:02:15.2782020Z ##[endgroup]
+2026-07-02T07:02:15.2783665Z [command]/usr/bin/git sparse-checkout disable
+2026-07-02T07:02:15.2829403Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-07-02T07:02:15.2862759Z ##[group]Checking out the ref
+2026-07-02T07:02:15.2864282Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-07-02T07:02:15.3001912Z Switched to a new branch 'main'
+2026-07-02T07:02:15.3004162Z branch 'main' set up to track 'origin/main'.
+2026-07-02T07:02:15.3017384Z ##[endgroup]
+2026-07-02T07:02:15.3060383Z [command]/usr/bin/git log -1 --format=%H
+2026-07-02T07:02:15.3086120Z c401124b5e7532214e8e73ada10228d5f224c3ee
+2026-07-02T07:02:15.3398873Z ##[group]Run actions/download-artifact@v8
+2026-07-02T07:02:15.3400223Z with:
+2026-07-02T07:02:15.3401313Z   path: shard-artifacts
+2026-07-02T07:02:15.3402371Z   pattern: shard-*
+2026-07-02T07:02:15.3403358Z   merge-multiple: false
+2026-07-02T07:02:15.3404574Z   repository: CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:15.3405987Z   run-id: 28553513098
+2026-07-02T07:02:15.3406998Z   skip-decompress: false
+2026-07-02T07:02:15.3408065Z   digest-mismatch: error
+2026-07-02T07:02:15.3409092Z env:
+2026-07-02T07:02:15.3409939Z   NUM_SHARDS: 16
+2026-07-02T07:02:15.3411081Z ##[endgroup]
+2026-07-02T07:02:15.6647297Z Found 16 artifact(s)
+2026-07-02T07:02:15.6649708Z Filtering artifacts by pattern 'shard-*'
+2026-07-02T07:02:15.6668818Z Preparing to download the following artifacts:
+2026-07-02T07:02:15.6672205Z - shard-14 (ID: 8031242008, Size: 1299, Expected Digest: sha256:d60cd997612422569d8a43ecf93779ff67ae158c0b63a45d87e4d8c35032a3b2)
+2026-07-02T07:02:15.6675998Z - shard-15 (ID: 8030357726, Size: 1318, Expected Digest: sha256:f4e2780edc60c2b202b8da8979208f11038c99b63f24a9e5369c98a426653970)
+2026-07-02T07:02:15.6680178Z - shard-13 (ID: 8029864516, Size: 1307, Expected Digest: sha256:6a45da2e4cbf338e54ae528bc52cda2872c5923b30ff056a011cea18d1dec42a)
+2026-07-02T07:02:15.6684310Z - shard-11 (ID: 8029339090, Size: 1282, Expected Digest: sha256:b5b17d9e28fe31711d34cfe051e517b8d63a64436d4c9d3280ab4b46a9b7c8bb)
+2026-07-02T07:02:15.6687881Z - shard-12 (ID: 8029153358, Size: 1260, Expected Digest: sha256:26cba3c45dcb3deca26431a0004371116b4c47749ef4d5cc5627ae66251c563d)
+2026-07-02T07:02:15.6692599Z - shard-9 (ID: 8028898386, Size: 1327, Expected Digest: sha256:258de5ecfbc16e37b4f9297c5c39921c7035d3a1dfb592cf01b270132936f30a)
+2026-07-02T07:02:15.6697550Z - shard-10 (ID: 8028577030, Size: 1353, Expected Digest: sha256:997d59e40e8d826d9b91f0d0b612dea587d008c1d12c78301c538a2ad8a2a8f2)
+2026-07-02T07:02:15.6702665Z - shard-8 (ID: 8027859573, Size: 1386, Expected Digest: sha256:3654dcbe266c9596d2f576f46fddf4cd552324f370b48abd1fc99eac8308878d)
+2026-07-02T07:02:15.6707010Z - shard-7 (ID: 8027611233, Size: 1375, Expected Digest: sha256:fdf0d219144ae275e0e00086de08c7f3667822de39418bb6435f0558ecb62c9b)
+2026-07-02T07:02:15.6711070Z - shard-6 (ID: 8027347101, Size: 1362, Expected Digest: sha256:f8694fbf0f2f843908ab1494d881b491bb245924edfb3450a5d8ee4c496f6702)
+2026-07-02T07:02:15.6715225Z - shard-5 (ID: 8027240576, Size: 1367, Expected Digest: sha256:ff837c913ad9dd8e03802e36df618ab7ae31c0b173bd100356faed49540d7301)
+2026-07-02T07:02:15.6719104Z - shard-4 (ID: 8026872669, Size: 1374, Expected Digest: sha256:825d8991067202072a12d37c8d8610f05e693a4758b18aed2637081800b43aae)
+2026-07-02T07:02:15.6723237Z - shard-2 (ID: 8026676665, Size: 1388, Expected Digest: sha256:e0fac1207d90521e8d621c3ff86b7d496363e369f2bd8620618286f178917299)
+2026-07-02T07:02:15.6727894Z - shard-3 (ID: 8026487236, Size: 1378, Expected Digest: sha256:b29753d0076813672f5827299a98a2bc09ad65e1e126c6da859e49419aba5f86)
+2026-07-02T07:02:15.6733261Z - shard-0 (ID: 8026066318, Size: 1367, Expected Digest: sha256:a881de666101ad6e445df6c3d2b50bd974be98d0cb1c55e68fca34a827dba837)
+2026-07-02T07:02:15.6737866Z - shard-1 (ID: 8025719110, Size: 1382, Expected Digest: sha256:90c205b958c190de0b0bfa2619504f21e1f15927b1f5d2897f62bbe36530aebc)
+2026-07-02T07:02:15.9337421Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-90e4068b-aa9b-59a8-bb12-c5121aea8e15/artifacts/6d3b1ed7841219c9034436460a45f2c34c3b0a0fa91dbad262d8bbb9126e7b21.zip
+2026-07-02T07:02:15.9345458Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-1
+2026-07-02T07:02:15.9362626Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-076d2841-0a13-5e33-8a9c-e0ca82150327/artifacts/bb82e5b84178ea32f99515321a1475e51320def28386942a4e8df0b41a0621ce.zip
+2026-07-02T07:02:15.9370505Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-14
+2026-07-02T07:02:15.9387771Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-b01771f8-2f71-5621-8457-0434d78d4e87/artifacts/aa977fa73f5b8db13ea579e4e82a36f2f1f9d922324e6d317941e878873773fb.zip
+2026-07-02T07:02:15.9395370Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-10
+2026-07-02T07:02:15.9409697Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-4ba4cfd5-e9ba-5b8b-a41b-221fc5344f98/artifacts/683c9aa1434e18580e92c6f32e43d25f03c4914797d3d8f0793a9aef00c227df.zip
+2026-07-02T07:02:15.9417434Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-4
+2026-07-02T07:02:15.9432501Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-9cd91ffc-b07a-5627-bcdc-1fe11df0482b/artifacts/a46fa3a659ca21955460e018bcb69714fdb1a42402e0f10b5fdbdf5357011434.zip
+2026-07-02T07:02:15.9441634Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-5
+2026-07-02T07:02:15.9456990Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-4c797c31-906a-5b54-bd32-9ac5a22cc8d2/artifacts/54c1042f7ee7fb24abb709d2c440a7cc2d21ab0f53fc1fc9e29fcea4c4b69d27.zip
+2026-07-02T07:02:15.9464631Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-2
+2026-07-02T07:02:15.9481907Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-bc4799de-a0fb-5db6-b06d-d6daa9a83108/artifacts/4c863e2bcf3a6c808df8d3a1408ca38d4b8ba99401698e65adee3f208cbc95c4.zip
+2026-07-02T07:02:15.9488247Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-3
+2026-07-02T07:02:15.9502653Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-4cbd02fb-15a0-5536-867e-f01d961dffa5/artifacts/81dd70723e115fb0f7c490925a1b5229e06017e582889059e6a9b2e8dfff29e9.zip
+2026-07-02T07:02:15.9511643Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-9
+2026-07-02T07:02:15.9527173Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-0367ddc4-b2f3-5904-8eb8-5df26dfcfccb/artifacts/306c826b56b335416506c4bf399f5e9cd50ffcf0355d87dd14a31abf6b896a6d.zip
+2026-07-02T07:02:15.9534811Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-11
+2026-07-02T07:02:15.9550342Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-ddd45248-b905-5cdf-a698-0b27497ac204/artifacts/c07e337f24419b75f09c8e54f1469d2a89bdfedd380cebba36b28b5621c7efb0.zip
+2026-07-02T07:02:15.9556897Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-12
+2026-07-02T07:02:15.9569085Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-728ff1c2-73b1-540d-bd3b-29fa5910604d/artifacts/a35ad9bb8c4833e0c134ac39a77c67c2c704ecccb17ac0fafab6c124f835bba1.zip
+2026-07-02T07:02:15.9575992Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-6
+2026-07-02T07:02:15.9587918Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-9bce9633-53f9-5150-933f-29dca26e6e95/artifacts/2438493f0412194e65da7951c621c65912027720770d9f2eef104fe35e32faa1.zip
+2026-07-02T07:02:15.9594968Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-7
+2026-07-02T07:02:15.9607896Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-3746c262-6fd7-5e08-aeea-0464f4d02ffc/artifacts/5f7b06fe481e1711ed5102610e757a56c7deaced1a33475f52770811b8cbc8fc.zip
+2026-07-02T07:02:15.9615200Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-8
+2026-07-02T07:02:15.9628204Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-65b914bc-9e21-53db-95c1-7975b546e734/artifacts/27f753da3d1d028053a879c9310bbc4131a5b6a76ffb3c8ed1734ba6e13912a3.zip
+2026-07-02T07:02:15.9634608Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-0
+2026-07-02T07:02:15.9741367Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-951dbc10-290e-57e6-a4ab-3e4d7b26d30b/artifacts/320678109840cbe628b6babd3f236d756c2836448557dfa38f2ee810bcf34272.zip
+2026-07-02T07:02:15.9748640Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-13
+2026-07-02T07:02:16.0030042Z Redirecting to blob download url: https://productionresultssa18.blob.core.windows.net/actions-results/8c57a41a-b08d-4dc1-8020-8d78bc0239ca/workflow-job-run-77c7215f-e834-5d50-83d6-28f8ad1070db/artifacts/3626a66d0ae8e51c5687859438248b77b36087defcd6c003ce3e8fa4172d07bd.zip
+2026-07-02T07:02:16.0038410Z Starting download of artifact to: /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/shard-artifacts/shard-15
+2026-07-02T07:02:16.0649655Z (node:2280) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+2026-07-02T07:02:16.0654703Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-02T07:02:16.0750314Z SHA256 digest of downloaded artifact is d60cd997612422569d8a43ecf93779ff67ae158c0b63a45d87e4d8c35032a3b2
+2026-07-02T07:02:16.0753612Z Artifact download completed successfully.
+2026-07-02T07:02:16.0905083Z SHA256 digest of downloaded artifact is 90c205b958c190de0b0bfa2619504f21e1f15927b1f5d2897f62bbe36530aebc
+2026-07-02T07:02:16.0907608Z Artifact download completed successfully.
+2026-07-02T07:02:16.0909869Z SHA256 digest of downloaded artifact is 258de5ecfbc16e37b4f9297c5c39921c7035d3a1dfb592cf01b270132936f30a
+2026-07-02T07:02:16.0913024Z Artifact download completed successfully.
+2026-07-02T07:02:16.0942476Z SHA256 digest of downloaded artifact is b5b17d9e28fe31711d34cfe051e517b8d63a64436d4c9d3280ab4b46a9b7c8bb
+2026-07-02T07:02:16.0946126Z Artifact download completed successfully.
+2026-07-02T07:02:16.0949668Z SHA256 digest of downloaded artifact is 26cba3c45dcb3deca26431a0004371116b4c47749ef4d5cc5627ae66251c563d
+2026-07-02T07:02:16.0953495Z Artifact download completed successfully.
+2026-07-02T07:02:16.0962030Z SHA256 digest of downloaded artifact is 997d59e40e8d826d9b91f0d0b612dea587d008c1d12c78301c538a2ad8a2a8f2
+2026-07-02T07:02:16.0964799Z Artifact download completed successfully.
+2026-07-02T07:02:16.0967804Z SHA256 digest of downloaded artifact is f8694fbf0f2f843908ab1494d881b491bb245924edfb3450a5d8ee4c496f6702
+2026-07-02T07:02:16.0970460Z Artifact download completed successfully.
+2026-07-02T07:02:16.0974177Z SHA256 digest of downloaded artifact is fdf0d219144ae275e0e00086de08c7f3667822de39418bb6435f0558ecb62c9b
+2026-07-02T07:02:16.0976700Z Artifact download completed successfully.
+2026-07-02T07:02:16.0978997Z SHA256 digest of downloaded artifact is 825d8991067202072a12d37c8d8610f05e693a4758b18aed2637081800b43aae
+2026-07-02T07:02:16.0981868Z Artifact download completed successfully.
+2026-07-02T07:02:16.1005610Z SHA256 digest of downloaded artifact is 3654dcbe266c9596d2f576f46fddf4cd552324f370b48abd1fc99eac8308878d
+2026-07-02T07:02:16.1007870Z Artifact download completed successfully.
+2026-07-02T07:02:16.1058098Z SHA256 digest of downloaded artifact is e0fac1207d90521e8d621c3ff86b7d496363e369f2bd8620618286f178917299
+2026-07-02T07:02:16.1058957Z Artifact download completed successfully.
+2026-07-02T07:02:16.1062961Z SHA256 digest of downloaded artifact is 6a45da2e4cbf338e54ae528bc52cda2872c5923b30ff056a011cea18d1dec42a
+2026-07-02T07:02:16.1063930Z Artifact download completed successfully.
+2026-07-02T07:02:16.1080387Z SHA256 digest of downloaded artifact is ff837c913ad9dd8e03802e36df618ab7ae31c0b173bd100356faed49540d7301
+2026-07-02T07:02:16.1081896Z Artifact download completed successfully.
+2026-07-02T07:02:16.1102436Z SHA256 digest of downloaded artifact is b29753d0076813672f5827299a98a2bc09ad65e1e126c6da859e49419aba5f86
+2026-07-02T07:02:16.1103193Z Artifact download completed successfully.
+2026-07-02T07:02:16.1214602Z SHA256 digest of downloaded artifact is a881de666101ad6e445df6c3d2b50bd974be98d0cb1c55e68fca34a827dba837
+2026-07-02T07:02:16.1342605Z Artifact download completed successfully.
+2026-07-02T07:02:16.1359022Z SHA256 digest of downloaded artifact is f4e2780edc60c2b202b8da8979208f11038c99b63f24a9e5369c98a426653970
+2026-07-02T07:02:16.1360279Z Artifact download completed successfully.
+2026-07-02T07:02:16.1361404Z Total of 16 artifact(s) downloaded
+2026-07-02T07:02:16.1366312Z Download artifact has finished successfully
+2026-07-02T07:02:16.1510371Z ##[group]Run set -euo pipefail
+2026-07-02T07:02:16.1511439Z [36;1mset -euo pipefail[0m
+2026-07-02T07:02:16.1512131Z [36;1m# Single-artifact downloads extract flat; normalize to subdirs[0m
+2026-07-02T07:02:16.1512946Z [36;1mif [[ -f "shard-artifacts/results.json" && ! -d "shard-artifacts/shard-0" ]]; then[0m
+2026-07-02T07:02:16.1513642Z [36;1m  mkdir -p shard-artifacts/shard-0[0m
+2026-07-02T07:02:16.1514288Z [36;1m  mv shard-artifacts/results.json shard-artifacts/shard-0/[0m
+2026-07-02T07:02:16.1515092Z [36;1m  mv shard-artifacts/provenance.json shard-artifacts/shard-0/ 2>/dev/null || true[0m
+2026-07-02T07:02:16.1515971Z [36;1mfi[0m
+2026-07-02T07:02:16.1516456Z [36;1m# Build expected file paths from shard count[0m
+2026-07-02T07:02:16.1516997Z [36;1mshard_results=()[0m
+2026-07-02T07:02:16.1517534Z [36;1mfor i in $(seq 0 $(( ${NUM_SHARDS} - 1 ))); do[0m
+2026-07-02T07:02:16.1518131Z [36;1m  f="shard-artifacts/shard-${i}/results.json"[0m
+2026-07-02T07:02:16.1518718Z [36;1m  if [[ ! -f "$f" ]]; then[0m
+2026-07-02T07:02:16.1519337Z [36;1m    echo "ERROR: missing results for shard ${i}" >&2[0m
+2026-07-02T07:02:16.1519949Z [36;1m    ls -R shard-artifacts/ >&2 || true[0m
+2026-07-02T07:02:16.1520464Z [36;1m    exit 1[0m
+2026-07-02T07:02:16.1521171Z [36;1m  fi[0m
+2026-07-02T07:02:16.1521624Z [36;1m  shard_results+=("$f")[0m
+2026-07-02T07:02:16.1522139Z [36;1mdone[0m
+2026-07-02T07:02:16.1522707Z [36;1m# Extract participants (agentbeats IDs) from scenario[0m
+2026-07-02T07:02:16.1523446Z [36;1mparticipants=$(npx json5 scenario.json5 | jq '.metadata.agentbeats_ids // {}')[0m
+2026-07-02T07:02:16.1524240Z [36;1mjq -s --argjson participants "$participants" '{[0m
+2026-07-02T07:02:16.1524941Z [36;1m  status: (if all(.[]; .status == "completed") then "completed"[0m
+2026-07-02T07:02:16.1525638Z [36;1m          elif any(.[]; .status == "completed") then "partial"[0m
+2026-07-02T07:02:16.1526238Z [36;1m          else "failed" end),[0m
+2026-07-02T07:02:16.1526783Z [36;1m  participants: $participants,[0m
+2026-07-02T07:02:16.1527309Z [36;1m  results: [.[].results[]][0m
+2026-07-02T07:02:16.1528001Z [36;1m}' "${shard_results[@]}" > results.json[0m
+2026-07-02T07:02:16.1689827Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:16.1690487Z env:
+2026-07-02T07:02:16.1691207Z   NUM_SHARDS: 16
+2026-07-02T07:02:16.1691667Z ##[endgroup]
+2026-07-02T07:02:18.5305442Z npm warn exec The following package was not found and will be installed: json5@2.2.3
+2026-07-02T07:02:18.8223988Z ##[group]Run set -euo pipefail
+2026-07-02T07:02:18.8224610Z [36;1mset -euo pipefail[0m
+2026-07-02T07:02:18.8225061Z [36;1mshard_provenance=()[0m
+2026-07-02T07:02:18.8225557Z [36;1mfor i in $(seq 0 $(( ${NUM_SHARDS} - 1 ))); do[0m
+2026-07-02T07:02:18.8226124Z [36;1m  f="shard-artifacts/shard-${i}/provenance.json"[0m
+2026-07-02T07:02:18.8226644Z [36;1m  if [[ ! -f "$f" ]]; then[0m
+2026-07-02T07:02:18.8227182Z [36;1m    echo "ERROR: missing provenance for shard ${i}" >&2[0m
+2026-07-02T07:02:18.8227761Z [36;1m    ls -R shard-artifacts/ >&2 || true[0m
+2026-07-02T07:02:18.8228246Z [36;1m    exit 1[0m
+2026-07-02T07:02:18.8228634Z [36;1m  fi[0m
+2026-07-02T07:02:18.8229030Z [36;1m  shard_provenance+=("$f")[0m
+2026-07-02T07:02:18.8229475Z [36;1mdone[0m
+2026-07-02T07:02:18.8229987Z [36;1m# image_digests and github_actions must be identical across shards[0m
+2026-07-02T07:02:18.8230929Z [36;1mexpected_image_digests=$(jq '.image_digests' "${shard_provenance[0]}")[0m
+2026-07-02T07:02:18.8231726Z [36;1mexpected_github_actions=$(jq '.github_actions' "${shard_provenance[0]}")[0m
+2026-07-02T07:02:18.8232321Z [36;1mtimestamps='[]'[0m
+2026-07-02T07:02:18.8232745Z [36;1mmanifest_digests='[]'[0m
+2026-07-02T07:02:18.8233220Z [36;1mfor f in "${shard_provenance[@]}"; do[0m
+2026-07-02T07:02:18.8233718Z [36;1m  got=$(jq '.image_digests' "$f")[0m
+2026-07-02T07:02:18.8234248Z [36;1m  if [[ "$got" != "$expected_image_digests" ]]; then[0m
+2026-07-02T07:02:18.8234831Z [36;1m    echo "ERROR: image_digests mismatch in $f" >&2; exit 1[0m
+2026-07-02T07:02:18.8235346Z [36;1m  fi[0m
+2026-07-02T07:02:18.8235744Z [36;1m  got=$(jq '.github_actions' "$f")[0m
+2026-07-02T07:02:18.8236270Z [36;1m  if [[ "$got" != "$expected_github_actions" ]]; then[0m
+2026-07-02T07:02:18.8236865Z [36;1m    echo "ERROR: github_actions mismatch in $f" >&2; exit 1[0m
+2026-07-02T07:02:18.8237392Z [36;1m  fi[0m
+2026-07-02T07:02:18.8237950Z [36;1m  timestamps=$(echo "$timestamps" | jq --argjson ts "$(jq '.timestamp' "$f")" '. + [$ts]')[0m
+2026-07-02T07:02:18.8239098Z [36;1m  manifest_digests=$(echo "$manifest_digests" | jq --argjson md "$(jq '.manifest_digests' "$f")" '. + [$md]')[0m
+2026-07-02T07:02:18.8239795Z [36;1mdone[0m
+2026-07-02T07:02:18.8240323Z [36;1m# Use the first shard's values (all shards are identical).[0m
+2026-07-02T07:02:18.8241074Z [36;1mjq -n \[0m
+2026-07-02T07:02:18.8241556Z [36;1m  --argjson image_digests "$expected_image_digests" \[0m
+2026-07-02T07:02:18.8242204Z [36;1m  --argjson manifest_digests "$(echo "$manifest_digests" | jq '.[0]')" \[0m
+2026-07-02T07:02:18.8242855Z [36;1m  --arg timestamp "$(echo "$timestamps" | jq -r '.[0]')" \[0m
+2026-07-02T07:02:18.8243452Z [36;1m  --argjson github_actions "$expected_github_actions" \[0m
+2026-07-02T07:02:18.8243963Z [36;1m  '{[0m
+2026-07-02T07:02:18.8244362Z [36;1m    image_digests: $image_digests,[0m
+2026-07-02T07:02:18.8244857Z [36;1m    manifest_digests: $manifest_digests,[0m
+2026-07-02T07:02:18.8245362Z [36;1m    timestamp: $timestamp,[0m
+2026-07-02T07:02:18.8245838Z [36;1m    github_actions: $github_actions[0m
+2026-07-02T07:02:18.8246312Z [36;1m  }' > provenance.json[0m
+2026-07-02T07:02:18.8246762Z [36;1mecho "Provenance:"[0m
+2026-07-02T07:02:18.8247195Z [36;1mcat provenance.json[0m
+2026-07-02T07:02:18.8283252Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:18.8283796Z env:
+2026-07-02T07:02:18.8284177Z   NUM_SHARDS: 16
+2026-07-02T07:02:18.8284573Z ##[endgroup]
+2026-07-02T07:02:19.1457572Z Provenance:
+2026-07-02T07:02:19.1467056Z {
+2026-07-02T07:02:19.1467680Z   "image_digests": {
+2026-07-02T07:02:19.1468739Z     "/agent": "ghcr.io/luca-bke/eroverflow@sha256:bf2e57d6c52e1ef5438b77b198d63a3b2768d66d7fd7f20308c1225c4743a4c8",
+2026-07-02T07:02:19.1470333Z     "/gateway": "ghcr.io/rdi-foundation/agentbeats-gateway@sha256:3f9976889c598092dc4273312ec431cbc48bbe064ff65b5613425f4990bc1d4c",
+2026-07-02T07:02:19.1472469Z     "/green": "ghcr.io/rdi-foundation/terminal-bench-green@sha256:c969a84ec648721d3ecbd62787ef8e1c2ada6ad85a215a275f33aa012cca5f49"
+2026-07-02T07:02:19.1473536Z   },
+2026-07-02T07:02:19.1473873Z   "manifest_digests": {
+2026-07-02T07:02:19.1474337Z     "/": "sha256:Ooxy4DapI0XEyflMfOiXbTWOM3GOwzdYbj8QPOYIYeA=",
+2026-07-02T07:02:19.1474924Z     "/agent": "sha256:r0y6MXdKYyicVQzBB9zQk3ZRvL7ca1A8uUVW7nqYXRc=",
+2026-07-02T07:02:19.1475530Z     "/gateway": "sha256:Ba99ymNGSymbrF9jGwLfnZaSnzPrw9sTJ5veaYMxV2Q=",
+2026-07-02T07:02:19.1476131Z     "/green": "sha256:3vXQG8IqUc6dZnVrXtftdlOMleyMA5kg3IzUOeLehiw="
+2026-07-02T07:02:19.1476581Z   },
+2026-07-02T07:02:19.1476934Z   "timestamp": "2026-07-01T23:05:13Z",
+2026-07-02T07:02:19.1477321Z   "github_actions": {
+2026-07-02T07:02:19.1477909Z     "run_url": "https://github.com/CShark-4891/terminal-bench-leaderboard/actions/runs/28553513098",
+2026-07-02T07:02:19.1478517Z     "ref": "refs/heads/main",
+2026-07-02T07:02:19.1478936Z     "sha": "c401124b5e7532214e8e73ada10228d5f224c3ee",
+2026-07-02T07:02:19.1479518Z     "repository_url": "https://github.com/CShark-4891/terminal-bench-leaderboard",
+2026-07-02T07:02:19.1480304Z     "workflow_ref": "CShark-4891/terminal-bench-leaderboard/.github/workflows/run-scenario.yml@refs/heads/main",
+2026-07-02T07:02:19.1500302Z     "workflow_sha": "c401124b5e7532214e8e73ada10228d5f224c3ee"
+2026-07-02T07:02:19.1501151Z   }
+2026-07-02T07:02:19.1501533Z }
+2026-07-02T07:02:19.1554206Z ##[group]Run TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+2026-07-02T07:02:19.1554691Z [36;1mTIMESTAMP=$(date +%Y%m%d-%H%M%S)[0m
+2026-07-02T07:02:19.1555103Z [36;1mUSERNAME=CShark-4891[0m
+2026-07-02T07:02:19.1555512Z [36;1mUNIQUE_NAME="${USERNAME}-${TIMESTAMP}"[0m
+2026-07-02T07:02:19.1556006Z [36;1mecho "unique_name=$UNIQUE_NAME" >> $GITHUB_OUTPUT[0m
+2026-07-02T07:02:19.1556545Z [36;1mecho "branch_name=submission-${UNIQUE_NAME}" >> $GITHUB_OUTPUT[0m
+2026-07-02T07:02:19.1590167Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:19.1590884Z env:
+2026-07-02T07:02:19.1591186Z   NUM_SHARDS: 16
+2026-07-02T07:02:19.1591503Z ##[endgroup]
+2026-07-02T07:02:19.1716217Z ##[group]Run PARENT_REPO=$(gh api repos/CShark-4891/terminal-bench-leaderboard --jq '.parent.full_name // "CShark-4891/terminal-bench-leaderboard"')
+2026-07-02T07:02:19.1717522Z [36;1mPARENT_REPO=$(gh api repos/CShark-4891/terminal-bench-leaderboard --jq '.parent.full_name // "CShark-4891/terminal-bench-leaderboard"')[0m
+2026-07-02T07:02:19.1718320Z [36;1mecho "Target repository: $PARENT_REPO"[0m
+2026-07-02T07:02:19.1718786Z [36;1mecho "repo=$PARENT_REPO" >> $GITHUB_OUTPUT[0m
+2026-07-02T07:02:19.1751151Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:19.1751601Z env:
+2026-07-02T07:02:19.1751894Z   NUM_SHARDS: 16
+2026-07-02T07:02:19.1755035Z   GH_TOKEN: ***
+2026-07-02T07:02:19.1755370Z ##[endgroup]
+2026-07-02T07:02:21.4860243Z Target repository: RDI-Foundation/terminal-bench-leaderboard
+2026-07-02T07:02:21.4898915Z ##[group]Run cp scenario.json5 /tmp/scenario.json5
+2026-07-02T07:02:21.4899440Z [36;1mcp scenario.json5 /tmp/scenario.json5[0m
+2026-07-02T07:02:21.4900140Z [36;1mgit remote add upstream https://github.com/${TARGET_REPO}.git[0m
+2026-07-02T07:02:21.4900930Z [36;1mgit fetch upstream[0m
+2026-07-02T07:02:21.4901348Z [36;1mgit checkout -b ${BRANCH_NAME} upstream/main[0m
+2026-07-02T07:02:21.4901813Z [36;1mgit config user.name "github-actions[bot]"[0m
+2026-07-02T07:02:21.4902356Z [36;1mgit config user.email "github-actions[bot]@users.noreply.github.com"[0m
+2026-07-02T07:02:21.4902875Z [36;1mmkdir -p results submissions[0m
+2026-07-02T07:02:21.4903354Z [36;1mcp /tmp/scenario.json5 "submissions/${UNIQUE_NAME}.json5"[0m
+2026-07-02T07:02:21.4903857Z [36;1mmv results.json "results/${UNIQUE_NAME}.json"[0m
+2026-07-02T07:02:21.4904397Z [36;1mmv provenance.json "submissions/${UNIQUE_NAME}-provenance.json"[0m
+2026-07-02T07:02:21.4905187Z [36;1mgit add "results/${UNIQUE_NAME}.json" "submissions/${UNIQUE_NAME}-provenance.json" "submissions/${UNIQUE_NAME}.json5"[0m
+2026-07-02T07:02:21.4905900Z [36;1mgit commit -m "Submission: ${UNIQUE_NAME}[0m
+2026-07-02T07:02:21.4906301Z [36;1m[0m
+2026-07-02T07:02:21.4906844Z [36;1mWorkflow run: https://github.com/CShark-4891/terminal-bench-leaderboard/actions/runs/28553513098"[0m
+2026-07-02T07:02:21.4907456Z [36;1mgit push origin ${BRANCH_NAME}[0m
+2026-07-02T07:02:21.4908106Z [36;1mecho "::notice title=Submission Branch Created::Your results are ready for submission on branch: ${BRANCH_NAME}"[0m
+2026-07-02T07:02:21.4941817Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:21.4942270Z env:
+2026-07-02T07:02:21.4942564Z   NUM_SHARDS: 16
+2026-07-02T07:02:21.4942906Z   UNIQUE_NAME: CShark-4891-20260702-070219
+2026-07-02T07:02:21.4943349Z   BRANCH_NAME: submission-CShark-4891-20260702-070219
+2026-07-02T07:02:21.4943838Z   TARGET_REPO: RDI-Foundation/terminal-bench-leaderboard
+2026-07-02T07:02:21.4944289Z ##[endgroup]
+2026-07-02T07:02:22.0728439Z From https://github.com/RDI-Foundation/terminal-bench-leaderboard
+2026-07-02T07:02:22.0729297Z  * [new branch]      main       -> upstream/main
+2026-07-02T07:02:22.0730731Z  * [new branch]      quick-submit-019d76c7-6d7e-7bc3-aa66-0e1d80fc0067 -> upstream/quick-submit-019d76c7-6d7e-7bc3-aa66-0e1d80fc0067
+2026-07-02T07:02:22.0732465Z  * [new branch]      quick-submit-019d76d0-5e6e-7f71-ac4a-39996fef99c8 -> upstream/quick-submit-019d76d0-5e6e-7f71-ac4a-39996fef99c8
+2026-07-02T07:02:22.0734132Z  * [new branch]      quick-submit-019d76da-437f-7c33-a037-569015b1272f -> upstream/quick-submit-019d76da-437f-7c33-a037-569015b1272f
+2026-07-02T07:02:22.0736040Z  * [new branch]      quick-submit-019d76ea-e6cd-7041-aef5-f7ee9d57ce58 -> upstream/quick-submit-019d76ea-e6cd-7041-aef5-f7ee9d57ce58
+2026-07-02T07:02:22.0737737Z  * [new branch]      quick-submit-019dd8eb-ede3-79f0-8b9e-cc6e0891afad -> upstream/quick-submit-019dd8eb-ede3-79f0-8b9e-cc6e0891afad
+2026-07-02T07:02:22.0739406Z  * [new branch]      quick-submit-019dd8f3-bc4d-7413-85e1-48b7a49dea01 -> upstream/quick-submit-019dd8f3-bc4d-7413-85e1-48b7a49dea01
+2026-07-02T07:02:22.0741316Z  * [new branch]      quick-submit-019dd900-8d81-75a0-9d13-e383c02902c1 -> upstream/quick-submit-019dd900-8d81-75a0-9d13-e383c02902c1
+2026-07-02T07:02:22.0743331Z  * [new branch]      quick-submit-019dd90e-7065-73b3-b9d5-5794b16a8651 -> upstream/quick-submit-019dd90e-7065-73b3-b9d5-5794b16a8651
+2026-07-02T07:02:22.0744957Z  * [new branch]      quick-submit-019dd928-6d99-7973-8d67-ff55b1f69e7f -> upstream/quick-submit-019dd928-6d99-7973-8d67-ff55b1f69e7f
+2026-07-02T07:02:22.0746536Z  * [new branch]      quick-submit-019dd953-c6d9-7da0-8171-b4361369bc05 -> upstream/quick-submit-019dd953-c6d9-7da0-8171-b4361369bc05
+2026-07-02T07:02:22.0748192Z  * [new branch]      quick-submit-019dd971-1b94-7983-8a5a-bd03e045f95b -> upstream/quick-submit-019dd971-1b94-7983-8a5a-bd03e045f95b
+2026-07-02T07:02:22.0750311Z  * [new branch]      quick-submit-019dd98c-29c2-7621-98a6-bd6622066879 -> upstream/quick-submit-019dd98c-29c2-7621-98a6-bd6622066879
+2026-07-02T07:02:22.0752247Z  * [new branch]      quick-submit-019dd9ae-92c0-7891-aabd-7846ffce2ca2 -> upstream/quick-submit-019dd9ae-92c0-7891-aabd-7846ffce2ca2
+2026-07-02T07:02:22.0753866Z  * [new branch]      quick-submit-019dda75-81e3-7741-af75-1c14f0e4daac -> upstream/quick-submit-019dda75-81e3-7741-af75-1c14f0e4daac
+2026-07-02T07:02:22.0755521Z  * [new branch]      quick-submit-019dda80-0dee-76f1-ab54-07f63d550d83 -> upstream/quick-submit-019dda80-0dee-76f1-ab54-07f63d550d83
+2026-07-02T07:02:22.0757163Z  * [new branch]      quick-submit-019dda91-1fa9-77d3-ad4e-c68312c9cc0e -> upstream/quick-submit-019dda91-1fa9-77d3-ad4e-c68312c9cc0e
+2026-07-02T07:02:22.0758780Z  * [new branch]      quick-submit-019ddaca-df26-72f1-a5c3-541361887bcb -> upstream/quick-submit-019ddaca-df26-72f1-a5c3-541361887bcb
+2026-07-02T07:02:22.0760438Z  * [new branch]      quick-submit-019ddc9b-1eac-7b71-9068-c8a5559f1419 -> upstream/quick-submit-019ddc9b-1eac-7b71-9068-c8a5559f1419
+2026-07-02T07:02:22.0762342Z  * [new branch]      quick-submit-019ddcc9-c98d-7cd0-9433-af0511b94b75 -> upstream/quick-submit-019ddcc9-c98d-7cd0-9433-af0511b94b75
+2026-07-02T07:02:22.0763992Z  * [new branch]      quick-submit-019dde16-cff4-7653-8f7c-13b97407547d -> upstream/quick-submit-019dde16-cff4-7653-8f7c-13b97407547d
+2026-07-02T07:02:22.0765719Z  * [new branch]      quick-submit-019ddeff-bc6a-7020-bc8e-fc717450ec5f -> upstream/quick-submit-019ddeff-bc6a-7020-bc8e-fc717450ec5f
+2026-07-02T07:02:22.0767430Z  * [new branch]      quick-submit-019de26c-6cab-7f31-a5c2-1af59b17e888 -> upstream/quick-submit-019de26c-6cab-7f31-a5c2-1af59b17e888
+2026-07-02T07:02:22.0769063Z  * [new branch]      quick-submit-019de2a1-a869-7582-97e8-1de8efefeb43 -> upstream/quick-submit-019de2a1-a869-7582-97e8-1de8efefeb43
+2026-07-02T07:02:22.0770919Z  * [new branch]      quick-submit-019de2c4-19b0-7e10-bdd6-05d69adad4c3 -> upstream/quick-submit-019de2c4-19b0-7e10-bdd6-05d69adad4c3
+2026-07-02T07:02:22.0772564Z  * [new branch]      quick-submit-019de3cc-c1a7-7b73-a5f2-3a8cacb77483 -> upstream/quick-submit-019de3cc-c1a7-7b73-a5f2-3a8cacb77483
+2026-07-02T07:02:22.0774155Z  * [new branch]      quick-submit-019de4ad-e75c-7aa3-ad2f-782b5958504e -> upstream/quick-submit-019de4ad-e75c-7aa3-ad2f-782b5958504e
+2026-07-02T07:02:22.0775778Z  * [new branch]      quick-submit-019de4cd-06b9-7b62-af1b-d6f905958a36 -> upstream/quick-submit-019de4cd-06b9-7b62-af1b-d6f905958a36
+2026-07-02T07:02:22.0777389Z  * [new branch]      quick-submit-019de706-919d-7340-94fa-37c26f0046c5 -> upstream/quick-submit-019de706-919d-7340-94fa-37c26f0046c5
+2026-07-02T07:02:22.0779029Z  * [new branch]      quick-submit-019de778-65b4-72a2-ab66-4390bc0d152b -> upstream/quick-submit-019de778-65b4-72a2-ab66-4390bc0d152b
+2026-07-02T07:02:22.0780908Z  * [new branch]      quick-submit-019de85f-228b-7550-8330-2be18a2513f5 -> upstream/quick-submit-019de85f-228b-7550-8330-2be18a2513f5
+2026-07-02T07:02:22.0782608Z  * [new branch]      quick-submit-019de927-dca2-7c82-b068-8182a0da9019 -> upstream/quick-submit-019de927-dca2-7c82-b068-8182a0da9019
+2026-07-02T07:02:22.0784256Z  * [new branch]      quick-submit-019de9db-7eb2-7870-9ed4-5f1928aae3fe -> upstream/quick-submit-019de9db-7eb2-7870-9ed4-5f1928aae3fe
+2026-07-02T07:02:22.0786211Z  * [new branch]      quick-submit-019dec61-2f1c-7ee1-9dd3-604eb0675635 -> upstream/quick-submit-019dec61-2f1c-7ee1-9dd3-604eb0675635
+2026-07-02T07:02:22.0787848Z  * [new branch]      quick-submit-019dee5d-75ca-7df0-9315-49bdef42bb24 -> upstream/quick-submit-019dee5d-75ca-7df0-9315-49bdef42bb24
+2026-07-02T07:02:22.0789460Z  * [new branch]      quick-submit-019deed4-6583-7a10-9180-2445816d8058 -> upstream/quick-submit-019deed4-6583-7a10-9180-2445816d8058
+2026-07-02T07:02:22.0791269Z  * [new branch]      quick-submit-019def56-68ed-7ad3-a4d2-0d63da1d8d75 -> upstream/quick-submit-019def56-68ed-7ad3-a4d2-0d63da1d8d75
+2026-07-02T07:02:22.0793124Z  * [new branch]      quick-submit-019df054-5b39-73e0-9a6a-34d646501b8d -> upstream/quick-submit-019df054-5b39-73e0-9a6a-34d646501b8d
+2026-07-02T07:02:22.0794824Z  * [new branch]      quick-submit-019df067-7d86-7982-8b07-d363d83ffe9d -> upstream/quick-submit-019df067-7d86-7982-8b07-d363d83ffe9d
+2026-07-02T07:02:22.0796447Z  * [new branch]      quick-submit-019df072-3bf1-7a40-95c0-bd53ff193d98 -> upstream/quick-submit-019df072-3bf1-7a40-95c0-bd53ff193d98
+2026-07-02T07:02:22.0798179Z  * [new branch]      quick-submit-019df077-f0d3-74d2-917c-45bb365ba389 -> upstream/quick-submit-019df077-f0d3-74d2-917c-45bb365ba389
+2026-07-02T07:02:22.0799803Z  * [new branch]      quick-submit-019df085-2dc8-7be2-a622-cdfd158e0235 -> upstream/quick-submit-019df085-2dc8-7be2-a622-cdfd158e0235
+2026-07-02T07:02:22.0801697Z  * [new branch]      quick-submit-019df091-ba2e-7b01-aa27-7521213e0673 -> upstream/quick-submit-019df091-ba2e-7b01-aa27-7521213e0673
+2026-07-02T07:02:22.0803370Z  * [new branch]      quick-submit-019df212-aaaf-7ef1-9cfb-b56e55b2014b -> upstream/quick-submit-019df212-aaaf-7ef1-9cfb-b56e55b2014b
+2026-07-02T07:02:22.0805057Z  * [new branch]      quick-submit-019df2c1-8518-7b21-b2c7-3e9b9ac5383a -> upstream/quick-submit-019df2c1-8518-7b21-b2c7-3e9b9ac5383a
+2026-07-02T07:02:22.0806714Z  * [new branch]      quick-submit-019df359-4669-7820-986a-88b3e6b307df -> upstream/quick-submit-019df359-4669-7820-986a-88b3e6b307df
+2026-07-02T07:02:22.0808363Z  * [new branch]      quick-submit-019df62e-fce8-7bb3-a2ec-a333e3ad38ad -> upstream/quick-submit-019df62e-fce8-7bb3-a2ec-a333e3ad38ad
+2026-07-02T07:02:22.0810038Z  * [new branch]      quick-submit-019df717-5d79-7d73-a634-a4f6dc238445 -> upstream/quick-submit-019df717-5d79-7d73-a634-a4f6dc238445
+2026-07-02T07:02:22.0811914Z  * [new branch]      quick-submit-019df79f-d508-7d03-9bd4-4749b43ff448 -> upstream/quick-submit-019df79f-d508-7d03-9bd4-4749b43ff448
+2026-07-02T07:02:22.0813561Z  * [new branch]      quick-submit-019df892-85df-7713-95cf-f594962f7757 -> upstream/quick-submit-019df892-85df-7713-95cf-f594962f7757
+2026-07-02T07:02:22.0815228Z  * [new branch]      quick-submit-019df8a7-cc75-7f72-8475-3a15d9a97fd6 -> upstream/quick-submit-019df8a7-cc75-7f72-8475-3a15d9a97fd6
+2026-07-02T07:02:22.0816864Z  * [new branch]      quick-submit-019df94e-6187-7951-b9e3-999c4ea026cc -> upstream/quick-submit-019df94e-6187-7951-b9e3-999c4ea026cc
+2026-07-02T07:02:22.0818538Z  * [new branch]      quick-submit-019dfb32-93a1-7b63-a542-d29d9e12fea9 -> upstream/quick-submit-019dfb32-93a1-7b63-a542-d29d9e12fea9
+2026-07-02T07:02:22.0820184Z  * [new branch]      quick-submit-019dfbdb-4d7d-73c3-8f1e-afb8bc9612c1 -> upstream/quick-submit-019dfbdb-4d7d-73c3-8f1e-afb8bc9612c1
+2026-07-02T07:02:22.0822065Z  * [new branch]      quick-submit-019dfdc1-ec02-7460-a38a-18d5cae8dfc4 -> upstream/quick-submit-019dfdc1-ec02-7460-a38a-18d5cae8dfc4
+2026-07-02T07:02:22.0823816Z  * [new branch]      quick-submit-019dfe89-628a-7ab2-b283-61cf3b3d4749 -> upstream/quick-submit-019dfe89-628a-7ab2-b283-61cf3b3d4749
+2026-07-02T07:02:22.0825440Z  * [new branch]      quick-submit-019e0118-2b5a-7410-850d-8dc154c20097 -> upstream/quick-submit-019e0118-2b5a-7410-850d-8dc154c20097
+2026-07-02T07:02:22.0827048Z  * [new branch]      quick-submit-019e02eb-e72c-7a70-b570-ef5c74cfad8d -> upstream/quick-submit-019e02eb-e72c-7a70-b570-ef5c74cfad8d
+2026-07-02T07:02:22.0828948Z  * [new branch]      quick-submit-019e03aa-7eea-70e2-9a72-81a1c0d97830 -> upstream/quick-submit-019e03aa-7eea-70e2-9a72-81a1c0d97830
+2026-07-02T07:02:22.0830846Z  * [new branch]      quick-submit-019e0452-7453-7ee3-ac54-edb4681832a1 -> upstream/quick-submit-019e0452-7453-7ee3-ac54-edb4681832a1
+2026-07-02T07:02:22.0832148Z  * [new branch]      quick-submit-019e0606-5647-7ea2-b7e3-2f44d4ac62e7 -> upstream/quick-submit-019e0606-5647-7ea2-b7e3-2f44d4ac62e7
+2026-07-02T07:02:22.0833107Z  * [new branch]      quick-submit-019e068a-0840-7251-92ec-61589f8d1e87 -> upstream/quick-submit-019e068a-0840-7251-92ec-61589f8d1e87
+2026-07-02T07:02:22.0834081Z  * [new branch]      quick-submit-019e0732-0621-7511-9299-3ce749975511 -> upstream/quick-submit-019e0732-0621-7511-9299-3ce749975511
+2026-07-02T07:02:22.0835240Z  * [new branch]      quick-submit-019e08a0-1ef2-7a42-9ad6-68d048b7f4d9 -> upstream/quick-submit-019e08a0-1ef2-7a42-9ad6-68d048b7f4d9
+2026-07-02T07:02:22.0836180Z  * [new branch]      quick-submit-019e159d-57a6-7f03-a591-0049b15a1b7a -> upstream/quick-submit-019e159d-57a6-7f03-a591-0049b15a1b7a
+2026-07-02T07:02:22.0837115Z  * [new branch]      quick-submit-019e1620-8b03-7683-87d8-ef31cfb5831d -> upstream/quick-submit-019e1620-8b03-7683-87d8-ef31cfb5831d
+2026-07-02T07:02:22.0838076Z  * [new branch]      quick-submit-019e16ae-dabb-7f50-a400-844b917ac528 -> upstream/quick-submit-019e16ae-dabb-7f50-a400-844b917ac528
+2026-07-02T07:02:22.0839010Z  * [new branch]      quick-submit-019e48fa-083d-7132-9462-af470b75840f -> upstream/quick-submit-019e48fa-083d-7132-9462-af470b75840f
+2026-07-02T07:02:22.0839939Z  * [new branch]      quick-submit-019e57b7-2bbe-79c1-8e14-b0f88db3b81f -> upstream/quick-submit-019e57b7-2bbe-79c1-8e14-b0f88db3b81f
+2026-07-02T07:02:22.0841157Z  * [new branch]      quick-submit-019e5c78-6f90-7622-8c52-fc26d12a7846 -> upstream/quick-submit-019e5c78-6f90-7622-8c52-fc26d12a7846
+2026-07-02T07:02:22.0842106Z  * [new branch]      quick-submit-019e5caf-66db-77c2-a0bf-c2ed2818e013 -> upstream/quick-submit-019e5caf-66db-77c2-a0bf-c2ed2818e013
+2026-07-02T07:02:22.0843071Z  * [new branch]      quick-submit-019e5cd0-6709-7642-94a1-43e2deb39589 -> upstream/quick-submit-019e5cd0-6709-7642-94a1-43e2deb39589
+2026-07-02T07:02:22.0844001Z  * [new branch]      quick-submit-019e5cda-55d2-7273-bd4b-5aef7022ced0 -> upstream/quick-submit-019e5cda-55d2-7273-bd4b-5aef7022ced0
+2026-07-02T07:02:22.0844980Z  * [new branch]      quick-submit-019e5ce2-ceea-76d0-8fa2-b39eb67818b2 -> upstream/quick-submit-019e5ce2-ceea-76d0-8fa2-b39eb67818b2
+2026-07-02T07:02:22.0845912Z  * [new branch]      quick-submit-019e5cfe-b263-7830-970b-17e3660a2bdc -> upstream/quick-submit-019e5cfe-b263-7830-970b-17e3660a2bdc
+2026-07-02T07:02:22.0846841Z  * [new branch]      quick-submit-019e5d0b-b8a0-7202-9d27-6c956fb2508f -> upstream/quick-submit-019e5d0b-b8a0-7202-9d27-6c956fb2508f
+2026-07-02T07:02:22.0847773Z  * [new branch]      quick-submit-019e5dcf-c995-7dc3-95f9-7925c28dd450 -> upstream/quick-submit-019e5dcf-c995-7dc3-95f9-7925c28dd450
+2026-07-02T07:02:22.0848705Z  * [new branch]      quick-submit-019e7e73-dd9b-7823-9578-a9fa995877a9 -> upstream/quick-submit-019e7e73-dd9b-7823-9578-a9fa995877a9
+2026-07-02T07:02:22.0849651Z  * [new branch]      quick-submit-019e80c1-abfa-7fe0-bd2a-eb01600c406c -> upstream/quick-submit-019e80c1-abfa-7fe0-bd2a-eb01600c406c
+2026-07-02T07:02:22.0850746Z  * [new branch]      quick-submit-019e80ea-c9dd-7f03-abb6-48af4a52022b -> upstream/quick-submit-019e80ea-c9dd-7f03-abb6-48af4a52022b
+2026-07-02T07:02:22.0851687Z  * [new branch]      quick-submit-019e8103-5a15-7750-a48c-76aeb1b8fc56 -> upstream/quick-submit-019e8103-5a15-7750-a48c-76aeb1b8fc56
+2026-07-02T07:02:22.0852621Z  * [new branch]      quick-submit-019e8475-5c86-74f3-99b1-0dc4d9bcca7f -> upstream/quick-submit-019e8475-5c86-74f3-99b1-0dc4d9bcca7f
+2026-07-02T07:02:22.0853549Z  * [new branch]      quick-submit-019e8475-5c8f-7972-8e9d-5c068567da3f -> upstream/quick-submit-019e8475-5c8f-7972-8e9d-5c068567da3f
+2026-07-02T07:02:22.0854477Z  * [new branch]      quick-submit-019e8475-5c9a-7341-a96f-86cc78423431 -> upstream/quick-submit-019e8475-5c9a-7341-a96f-86cc78423431
+2026-07-02T07:02:22.0855570Z  * [new branch]      quick-submit-019e8475-5c9f-71c2-b54b-b289470b4212 -> upstream/quick-submit-019e8475-5c9f-71c2-b54b-b289470b4212
+2026-07-02T07:02:22.0856485Z  * [new branch]      quick-submit-019e8475-5ca1-7023-bf49-625aa6b35d94 -> upstream/quick-submit-019e8475-5ca1-7023-bf49-625aa6b35d94
+2026-07-02T07:02:22.0857400Z  * [new branch]      quick-submit-019e8488-292f-7363-973d-f38fcb12746d -> upstream/quick-submit-019e8488-292f-7363-973d-f38fcb12746d
+2026-07-02T07:02:22.0858308Z  * [new branch]      quick-submit-019e84ba-99cc-7231-9ce2-4a3f496276f2 -> upstream/quick-submit-019e84ba-99cc-7231-9ce2-4a3f496276f2
+2026-07-02T07:02:22.0859345Z  * [new branch]      quick-submit-019e84c4-6ca6-76c3-8a9e-d98de0530ed4 -> upstream/quick-submit-019e84c4-6ca6-76c3-8a9e-d98de0530ed4
+2026-07-02T07:02:22.0860288Z  * [new branch]      quick-submit-019e84ce-06a1-7941-9286-dad0664d6ed7 -> upstream/quick-submit-019e84ce-06a1-7941-9286-dad0664d6ed7
+2026-07-02T07:02:22.0861357Z  * [new branch]      quick-submit-019e883a-81f6-7131-9fc3-a2c823a31567 -> upstream/quick-submit-019e883a-81f6-7131-9fc3-a2c823a31567
+2026-07-02T07:02:22.0862277Z  * [new branch]      quick-submit-019e8bc0-9257-7133-b425-834897d428d6 -> upstream/quick-submit-019e8bc0-9257-7133-b425-834897d428d6
+2026-07-02T07:02:22.0863197Z  * [new branch]      quick-submit-019e8bc7-6e44-7910-842c-b735f1bab6d2 -> upstream/quick-submit-019e8bc7-6e44-7910-842c-b735f1bab6d2
+2026-07-02T07:02:22.0864108Z  * [new branch]      quick-submit-019e8bca-4d88-7980-851d-91b9484abb31 -> upstream/quick-submit-019e8bca-4d88-7980-851d-91b9484abb31
+2026-07-02T07:02:22.0865033Z  * [new branch]      quick-submit-019e8bd0-6ddf-78c1-b657-76a6482b83b6 -> upstream/quick-submit-019e8bd0-6ddf-78c1-b657-76a6482b83b6
+2026-07-02T07:02:22.0865964Z  * [new branch]      quick-submit-019e8bea-39a9-7b70-8078-9fc5c8549f52 -> upstream/quick-submit-019e8bea-39a9-7b70-8078-9fc5c8549f52
+2026-07-02T07:02:22.0866902Z  * [new branch]      quick-submit-019e8bf2-eb01-7b61-add7-1ac1a7392773 -> upstream/quick-submit-019e8bf2-eb01-7b61-add7-1ac1a7392773
+2026-07-02T07:02:22.0867830Z  * [new branch]      quick-submit-019e8f99-4e5b-7b12-8e2f-83fa9a01e28b -> upstream/quick-submit-019e8f99-4e5b-7b12-8e2f-83fa9a01e28b
+2026-07-02T07:02:22.0868744Z  * [new branch]      quick-submit-019e8fa6-5627-7773-8b00-77da5e599e38 -> upstream/quick-submit-019e8fa6-5627-7773-8b00-77da5e599e38
+2026-07-02T07:02:22.0869655Z  * [new branch]      quick-submit-019e91b5-bf3a-70c3-a41c-4fa45e34fc61 -> upstream/quick-submit-019e91b5-bf3a-70c3-a41c-4fa45e34fc61
+2026-07-02T07:02:22.0870690Z  * [new branch]      quick-submit-019e91c2-9af6-7041-8a9a-17f63ae0ce27 -> upstream/quick-submit-019e91c2-9af6-7041-8a9a-17f63ae0ce27
+2026-07-02T07:02:22.0871620Z  * [new branch]      quick-submit-019e91c7-cf46-75f3-a6b3-0367958583ec -> upstream/quick-submit-019e91c7-cf46-75f3-a6b3-0367958583ec
+2026-07-02T07:02:22.0872547Z  * [new branch]      quick-submit-019e929e-007a-7a23-900a-b7694e6faebd -> upstream/quick-submit-019e929e-007a-7a23-900a-b7694e6faebd
+2026-07-02T07:02:22.0873476Z  * [new branch]      quick-submit-019e92b4-a0c9-7b00-bde1-737341d46c93 -> upstream/quick-submit-019e92b4-a0c9-7b00-bde1-737341d46c93
+2026-07-02T07:02:22.0874406Z  * [new branch]      quick-submit-019e92d4-47fc-7233-9cfb-adeaf21590a3 -> upstream/quick-submit-019e92d4-47fc-7233-9cfb-adeaf21590a3
+2026-07-02T07:02:22.0875336Z  * [new branch]      quick-submit-019e92f9-f49b-7f51-a13a-75df7ffd44d7 -> upstream/quick-submit-019e92f9-f49b-7f51-a13a-75df7ffd44d7
+2026-07-02T07:02:22.0876258Z  * [new branch]      quick-submit-019e92fd-20b5-7351-a6a6-2b359dcff661 -> upstream/quick-submit-019e92fd-20b5-7351-a6a6-2b359dcff661
+2026-07-02T07:02:22.0877182Z  * [new branch]      quick-submit-019e9302-42f1-76d3-9d97-8bc1d20b59de -> upstream/quick-submit-019e9302-42f1-76d3-9d97-8bc1d20b59de
+2026-07-02T07:02:22.0878102Z  * [new branch]      quick-submit-019e9309-b6d8-73c0-ac0d-41a17a72eb22 -> upstream/quick-submit-019e9309-b6d8-73c0-ac0d-41a17a72eb22
+2026-07-02T07:02:22.0879169Z  * [new branch]      quick-submit-019e9313-2f1a-78b3-a91c-ae0f3dd10be8 -> upstream/quick-submit-019e9313-2f1a-78b3-a91c-ae0f3dd10be8
+2026-07-02T07:02:22.0880087Z  * [new branch]      quick-submit-019e9321-f37d-7393-8568-f7a4097b45ec -> upstream/quick-submit-019e9321-f37d-7393-8568-f7a4097b45ec
+2026-07-02T07:02:22.0881139Z  * [new branch]      quick-submit-019e9329-af4e-7372-8759-0d42a4cb13c7 -> upstream/quick-submit-019e9329-af4e-7372-8759-0d42a4cb13c7
+2026-07-02T07:02:22.0882052Z  * [new branch]      quick-submit-019e935c-53a5-7781-b507-3302ddd24142 -> upstream/quick-submit-019e935c-53a5-7781-b507-3302ddd24142
+2026-07-02T07:02:22.0883088Z  * [new branch]      quick-submit-019e96f6-339d-7d71-94e2-54820fee0acb -> upstream/quick-submit-019e96f6-339d-7d71-94e2-54820fee0acb
+2026-07-02T07:02:22.0884044Z  * [new branch]      quick-submit-019e9f38-5ac1-7701-b311-de715c241f08 -> upstream/quick-submit-019e9f38-5ac1-7701-b311-de715c241f08
+2026-07-02T07:02:22.0884997Z  * [new branch]      quick-submit-019e9f41-b491-7aa2-88b7-6affb115d6d6 -> upstream/quick-submit-019e9f41-b491-7aa2-88b7-6affb115d6d6
+2026-07-02T07:02:22.0885926Z  * [new branch]      quick-submit-019e9f59-9fea-7721-a86b-fbd3a1b2e156 -> upstream/quick-submit-019e9f59-9fea-7721-a86b-fbd3a1b2e156
+2026-07-02T07:02:22.0886851Z  * [new branch]      quick-submit-019e9f65-b688-7020-b7a4-92af7ca175b7 -> upstream/quick-submit-019e9f65-b688-7020-b7a4-92af7ca175b7
+2026-07-02T07:02:22.0887783Z  * [new branch]      quick-submit-019e9f80-cdcd-70b1-854f-e0bd09674cb2 -> upstream/quick-submit-019e9f80-cdcd-70b1-854f-e0bd09674cb2
+2026-07-02T07:02:22.0888712Z  * [new branch]      quick-submit-019e9f8b-4da1-7c12-adfa-46fa157b16f1 -> upstream/quick-submit-019e9f8b-4da1-7c12-adfa-46fa157b16f1
+2026-07-02T07:02:22.0889644Z  * [new branch]      quick-submit-019e9f8b-5db8-72f3-8d50-3bf745f1c756 -> upstream/quick-submit-019e9f8b-5db8-72f3-8d50-3bf745f1c756
+2026-07-02T07:02:22.0890670Z  * [new branch]      quick-submit-019e9f94-8def-7ad2-854f-d7a21da00ce7 -> upstream/quick-submit-019e9f94-8def-7ad2-854f-d7a21da00ce7
+2026-07-02T07:02:22.0891614Z  * [new branch]      quick-submit-019e9f94-8df7-75d2-9549-a7d59fb3c430 -> upstream/quick-submit-019e9f94-8df7-75d2-9549-a7d59fb3c430
+2026-07-02T07:02:22.0892537Z  * [new branch]      quick-submit-019e9fb6-4f9d-71d3-b884-50fdaece119d -> upstream/quick-submit-019e9fb6-4f9d-71d3-b884-50fdaece119d
+2026-07-02T07:02:22.0893466Z  * [new branch]      quick-submit-019eb0ad-7209-72c2-8e6f-15e5fdba5b7b -> upstream/quick-submit-019eb0ad-7209-72c2-8e6f-15e5fdba5b7b
+2026-07-02T07:02:22.0894380Z  * [new branch]      quick-submit-019ec7b4-1e59-7070-b636-12a72a7fb2de -> upstream/quick-submit-019ec7b4-1e59-7070-b636-12a72a7fb2de
+2026-07-02T07:02:22.0895297Z  * [new branch]      quick-submit-019f1f95-132e-7473-960c-6937d8985615 -> upstream/quick-submit-019f1f95-132e-7473-960c-6937d8985615
+2026-07-02T07:02:22.0896207Z  * [new branch]      quick-submit-019f1fa3-aea5-7813-91c3-17532fceab99 -> upstream/quick-submit-019f1fa3-aea5-7813-91c3-17532fceab99
+2026-07-02T07:02:22.1017275Z Switched to a new branch 'submission-CShark-4891-20260702-070219'
+2026-07-02T07:02:22.1019300Z branch 'submission-CShark-4891-20260702-070219' set up to track 'upstream/main'.
+2026-07-02T07:02:22.1212989Z [submission-CShark-4891-20260702-070219 ad35c94] Submission: CShark-4891-20260702-070219
+2026-07-02T07:02:22.1213963Z  3 files changed, 508 insertions(+)
+2026-07-02T07:02:22.1214686Z  create mode 100644 results/CShark-4891-20260702-070219.json
+2026-07-02T07:02:22.1215572Z  create mode 100644 submissions/CShark-4891-20260702-070219-provenance.json
+2026-07-02T07:02:22.1216748Z  create mode 100644 submissions/CShark-4891-20260702-070219.json5
+2026-07-02T07:02:23.2292068Z remote: 
+2026-07-02T07:02:23.2292745Z remote: Create a pull request for 'submission-CShark-4891-20260702-070219' on GitHub by visiting:        
+2026-07-02T07:02:23.2293718Z remote:      https://github.com/CShark-4891/terminal-bench-leaderboard/pull/new/submission-CShark-4891-20260702-070219        
+2026-07-02T07:02:23.2294843Z remote: 
+2026-07-02T07:02:23.2295390Z To https://github.com/CShark-4891/terminal-bench-leaderboard
+2026-07-02T07:02:23.2296066Z  * [new branch]      submission-CShark-4891-20260702-070219 -> submission-CShark-4891-20260702-070219
+2026-07-02T07:02:23.2358678Z ##[notice]Your results are ready for submission on branch: submission-CShark-4891-20260702-070219
+2026-07-02T07:02:23.2408240Z ##[group]Run echo "### Submit your results" >> $GITHUB_STEP_SUMMARY
+2026-07-02T07:02:23.2408861Z [36;1mecho "### Submit your results" >> $GITHUB_STEP_SUMMARY[0m
+2026-07-02T07:02:23.2409825Z [36;1mecho "[Click here to open a pull request](https://github.com/${TARGET_REPO}/compare/main...CShark-4891:terminal-bench-leaderboard:${BRANCH_NAME}?expand=1)" >> $GITHUB_STEP_SUMMARY[0m
+2026-07-02T07:02:23.2411068Z [36;1mecho "" >> $GITHUB_STEP_SUMMARY[0m
+2026-07-02T07:02:23.2411791Z [36;1mecho "When creating the PR, UNCHECK 'Allow edits and access to secrets by maintainers' to protect your secrets." >> $GITHUB_STEP_SUMMARY[0m
+2026-07-02T07:02:23.2445495Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-07-02T07:02:23.2445947Z env:
+2026-07-02T07:02:23.2446242Z   NUM_SHARDS: 16
+2026-07-02T07:02:23.2446645Z   TARGET_REPO: RDI-Foundation/terminal-bench-leaderboard
+2026-07-02T07:02:23.2447175Z   BRANCH_NAME: submission-CShark-4891-20260702-070219
+2026-07-02T07:02:23.2447671Z ##[endgroup]
+2026-07-02T07:02:23.2634578Z Post job cleanup.
+2026-07-02T07:02:23.3478988Z [command]/usr/bin/git version
+2026-07-02T07:02:23.3516998Z git version 2.54.0
+2026-07-02T07:02:23.3555307Z Temporarily overriding HOME='/home/runner/work/_temp/bd560da9-091b-4b3b-854a-6a6aa6435a7a' before making global git config changes
+2026-07-02T07:02:23.3556316Z Adding repository directory to the temporary git global config as a safe directory
+2026-07-02T07:02:23.3561193Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard
+2026-07-02T07:02:23.3594457Z Removing SSH command configuration
+2026-07-02T07:02:23.3601050Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-07-02T07:02:23.3636937Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-07-02T07:02:23.3931143Z Removing HTTP extra header
+2026-07-02T07:02:23.3936371Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-07-02T07:02:23.3973322Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-07-02T07:02:23.4206857Z Removing includeIf entries pointing to credentials config files
+2026-07-02T07:02:23.4214241Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-07-02T07:02:23.4242593Z includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path
+2026-07-02T07:02:23.4244276Z includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path
+2026-07-02T07:02:23.4247667Z includeif.gitdir:/github/workspace/.git.path
+2026-07-02T07:02:23.4248578Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-07-02T07:02:23.4253573Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path
+2026-07-02T07:02:23.4277459Z /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4287676Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git.path /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4323767Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path
+2026-07-02T07:02:23.4347309Z /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4358124Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/terminal-bench-leaderboard/terminal-bench-leaderboard/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4394137Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-07-02T07:02:23.4425303Z /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4433489Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4468617Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-07-02T07:02:23.4491572Z /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4503695Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config
+2026-07-02T07:02:23.4538755Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-07-02T07:02:23.4769365Z Removing credentials config '/home/runner/work/_temp/git-credentials-c3d9cdda-e8e4-483a-8fea-05dd6bf4b72c.config'
+2026-07-02T07:02:23.4915464Z Cleaning up orphan processes
