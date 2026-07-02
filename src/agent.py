@@ -26,7 +26,13 @@ from agents.terminal_bench import TerminalBenchAgent
 
 def _build_llm_client() -> TerminalBenchLLMClientInterface:
     if LLM_PROVIDER == "l3s":
-        return L3SLLMClient(model=L3S_MODEL, base_url=L3S_ENDPOINT)
+        return L3SLLMClient(
+            model=L3S_MODEL,
+            base_url=L3S_ENDPOINT,
+            backoff_enabled=ENABLE_RATE_LIMIT_BACKOFF,
+            backoff_max_retries=BACKOFF_MAX_RETRIES,
+            backoff_base_delay=BACKOFF_BASE_DELAY,
+        )
     if LLM_PROVIDER == "academiccloud":
         return AcademicCloudLLMClient(
             model=ACADEMICCLOUD_MODEL,
