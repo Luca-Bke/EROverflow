@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
@@ -14,12 +14,11 @@ def agent():
     mock_client.invoke_async = AsyncMock()
     mock_client.rate_limited = MagicMock(return_value=False)
     mock_client.retry_log = MagicMock(return_value=[])
-    with patch.dict("agents.terminal_bench.LLM_PROVIDER_DICTIONARY", {
-        "openrouter": lambda **_: mock_client,
-        "academiccloud": lambda **_: mock_client,
-    }):
-        a = TerminalBenchAgent()
-    return a
+    return TerminalBenchAgent(
+        llm_client=mock_client,
+        system_prompt="test-system-prompt",
+        recon_cmd="echo recon",
+    )
 
 
 # --- ExecRequestChecker.check_command_syntax ---
