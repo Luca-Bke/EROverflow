@@ -59,7 +59,7 @@ class Agent:
         self._memory_log: list[dict[str, Any]] = []
 
     @utils.TimeTracer.timed("Agent.run")
-    @utils.TimeTracer.inverse_timed("Agent.run")
+    @utils.TimeTracer.inverse_timed("Agent.wait_for_response")
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         """ Check max turn count implement final tracing via langchain.
         Message processing is performed elsewhere. """
@@ -76,7 +76,11 @@ class Agent:
             new_agent_text_message(f"Turn {self._turn_count}: thinking...")
         )
 
-        response_result = await self._backend.handle_request_iteration(message, updater)
+        # LangChain auto-traces every ChatOpenAI call to LangSmith whenever
+        # LANGSMITH_TRACING is set — independent of our own @traceable calls.
+        # We only want our own session/timing traces, so suppress that here.
+        with tracing_context(enabled=False):
+            response_result = await self._backend.handle_request_iteration(message, updater)
 
         # Defensive: the backend now always returns a JSON string or raises, so
         # a None here means a contract violation — fail loudly with a clear
@@ -96,9 +100,15 @@ class Agent:
             parts=[Part(root=TextPart(text=response_result))]
         )
         await updater.complete(response_msg)
-        utils.TimeTracer.new_session()
         self._turn_count += 1
 
+    def finalize_turn(self) -> None:
+        """Call only after run() — including its timing decorators — has fully
+        returned. run()'s own [Agent.run] entry is appended by its outer
+        @timed decorator's `finally`, which fires after run()'s body returns;
+        rotating the session from inside run() itself would strand that entry
+        in the next turn's session instead of this one."""
+        utils.TimeTracer.new_session()
         utils.emit_session_trace(
             history=self._memory_log,
             turn_count=self._turn_count,
