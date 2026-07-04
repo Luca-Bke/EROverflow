@@ -29,6 +29,7 @@ def emit_session_trace(
     turn_count: int,
     rate_limited: bool,
     retry_log: list[dict],
+    timer_sessions: list[list[dict]]
 ) -> dict:
     """Emit a single LangSmith trace summarising one completed agent session."""
     return {
@@ -37,6 +38,7 @@ def emit_session_trace(
         "retry_count": len(retry_log),
         "history_length": len(history),
         "completed": not rate_limited,
+        "timer_sessions": timer_sessions,
     }
 
 
