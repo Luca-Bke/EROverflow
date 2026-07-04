@@ -29,7 +29,6 @@ def emit_session_trace(
     turn_count: int,
     rate_limited: bool,
     retry_log: list[dict],
-    timer_sessions: list[list[dict]]
 ) -> dict:
     """Emit a single LangSmith trace summarising one completed agent session."""
     return {
@@ -38,6 +37,13 @@ def emit_session_trace(
         "retry_count": len(retry_log),
         "history_length": len(history),
         "completed": not rate_limited,
+    }
+
+
+@traceable(name="timer_trace", run_type="chain")
+def emit_timer_trace(timer_sessions: list[list[dict]]) -> dict:
+    """Emit a single LangSmith trace summarising one completed agent session."""
+    return {
         "timer_sessions": timer_sessions,
     }
 
@@ -49,7 +55,7 @@ class TimeTracer:
 
     timer_sessions: list[list[dict]] = []
     current_session: list[dict] = []
-    
+
     last_end_time = {}
 
     def __init__():
@@ -83,7 +89,7 @@ class TimeTracer:
                         {f"[{entry_name}]": time.perf_counter() - start})
             return wrapper
         return decorator
-    
+
     def inverse_timed(entry_name: str):
         def decorator(func):
             if inspect.iscoroutinefunction(func):
@@ -97,7 +103,8 @@ class TimeTracer:
                     try:
                         return await func(*args, **kwargs)
                     finally:
-                        TimeTracer.last_end_time[entry_name] = time.perf_counter()
+                        TimeTracer.last_end_time[entry_name] = time.perf_counter(
+                        )
                 return async_wrapper
 
             @wraps(func)
