@@ -58,6 +58,8 @@ class Agent:
         self._max_turn_count = config.MAX_TURN_COUNT
         self._memory_log: list[dict[str, Any]] = []
 
+    @utils.TimeTracer.timed("Agent.run")
+    @utils.TimeTracer.inverse_timed("Agent.run")
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         """ Check max turn count implement final tracing via langchain.
         Message processing is performed elsewhere. """
@@ -87,17 +89,6 @@ class Agent:
 
         self._memory_log.append(self._backend._memory.snapshot_memory())
 
-        if (utils.is_final_response(response_result) or
-                self._backend._llm_client.rate_limited()):
-
-            with tracing_context(enabled=self._trace_enabled):
-                utils.emit_session_trace(
-                    history=self._memory_log,
-                    turn_count=self._turn_count,
-                    rate_limited=self._backend._llm_client.rate_limited(),
-                    retry_log=self._backend._llm_client.retry_log(),
-                )
-
         # Send the agent response back to the A2A server. A task lives for only
         # one turn, so we must complete it exactly once — otherwise the executor
         # responds with an empty message and errors.
@@ -105,5 +96,13 @@ class Agent:
             parts=[Part(root=TextPart(text=response_result))]
         )
         await updater.complete(response_msg)
-
+        utils.TimeTracer.new_session()
         self._turn_count += 1
+
+        utils.emit_session_trace(
+            history=self._memory_log,
+            turn_count=self._turn_count,
+            rate_limited=self._backend._llm_client.rate_limited(),
+            retry_log=self._backend._llm_client.retry_log(),
+            timer_sessions=utils.TimeTracer.timer_sessions
+        )

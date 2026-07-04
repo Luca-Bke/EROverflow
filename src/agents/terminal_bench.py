@@ -7,6 +7,7 @@ context_id.
 """
 
 import json
+from timeit import Timer
 import traceback
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -56,6 +57,7 @@ class TerminalBenchAgent:
         self._turn_count = 0
 
     # @traceable(name="Actor Critic Loop", run_type="chain")
+
     async def __run_actor_critic_loop__(self):
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
@@ -88,6 +90,7 @@ class TerminalBenchAgent:
             return None
 
     # @traceable(name="Turn", run_type="chain")
+    @utils.TimeTracer.timed("TerminalBenchAgent.handle_request_iteration")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         self._turn_count += 1
