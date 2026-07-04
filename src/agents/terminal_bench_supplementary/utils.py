@@ -20,7 +20,7 @@ def is_final_response(response_result: str) -> bool:
 
 # ── LangSmith session tracing ─────────────────────────────────────────────────
 
-@traceable(name="agent_session", run_type="chain")
+@traceable(name="agent_session_trace", run_type="chain")
 def emit_session_trace(
     history: list[dict],
     turn_count: int,

@@ -32,7 +32,6 @@ class TerminalBenchAgent:
     module-level globals or environment variables except the LangSmith toggle.
     """
 
-
     def __init__(
         self,
         llm_client: AbstractLLMClient,
@@ -56,7 +55,7 @@ class TerminalBenchAgent:
         self._actor_agent = ActorAgent(llm_client)
         self._turn_count = 0
 
-    @traceable(name="Actor Critic Loop", run_type="chain")
+    # @traceable(name="Actor Critic Loop", run_type="chain")
     async def __run_actor_critic_loop__(self):
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
@@ -69,22 +68,26 @@ class TerminalBenchAgent:
         critic_messages = self._memory.build_critic_messages()
         print(f"critic messages:\n{critic_messages}\n")
 
-        exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
-        print(f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
+        exec_request = getattr(
+            self._memory.get_execution_request_candidate(), "content")
+        print(
+            f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
         critic_result = await self._critic_agent.invoke(
             critic_messages, exec_request)
 
         print(f"critic result:\n{critic_result}\n")
 
         if (critic_result.approved):  # if the critic accepts
-            exec_request = getattr(self._memory.get_execution_request_candidate(), "content")
+            exec_request = getattr(
+                self._memory.get_execution_request_candidate(), "content")
             print(f"Approved exec request: {exec_request}")
             self._memory.add(AIMessage(content=exec_request))
             return exec_request
         else:
             self._memory.set_critic_feedback(critic_result.feedback)
             return None
-    @traceable(name="Turn", run_type="chain")
+
+    # @traceable(name="Turn", run_type="chain")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         self._turn_count += 1

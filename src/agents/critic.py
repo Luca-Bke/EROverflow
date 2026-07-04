@@ -41,7 +41,7 @@ class CriticAgent(AbstractAgent):
         self._max_verdict_attempts = 10
 
     @staticmethod
-    @traceable(name="ParseCriticVerdict", run_type="parser")
+    # @traceable(name="ParseCriticVerdict", run_type="parser")
     def _parse_verdict(raw_critic_verdict: str) -> CriticVerdict:
         data: dict[str, Any] | None = None
         try:
@@ -124,7 +124,7 @@ class CriticAgent(AbstractAgent):
         return await self._llm_client.invoke_async(combined_critic_messages)
 
     @override
-    @traceable(name="Critic", run_type="chain")
+    # @traceable(name="Critic", run_type="chain")
     async def invoke(self, messages: list[BaseMessage],
                      exec_request_candidate: str) -> CriticVerdict:
         # ── Static syntax checker — always the first, cheap gate ──────────
