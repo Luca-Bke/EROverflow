@@ -23,7 +23,7 @@ from agents.planner import PlannerAgent
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
 from agents.critic import CriticAgent
-from a2a.utils import get_message_text
+from a2a.utils import get_message_text, new_agent_text_message
 
 
 class TerminalBenchAgent:
@@ -58,8 +58,7 @@ class TerminalBenchAgent:
         self._actor_agent = ActorAgent(llm_client)
         self._turn_count = 0
 
-    # @traceable(name="Actor Critic Loop", run_type="chain")
-
+    @traceable(name="Actor Critic Loop", run_type="chain")
     async def __run_actor_critic_loop__(self):
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
@@ -93,7 +92,7 @@ class TerminalBenchAgent:
             self._memory.set_critic_feedback(critic_result.feedback)
             return None
 
-    # @traceable(name="Turn", run_type="chain")
+    @traceable(name="Turn", run_type="chain")
     @utils.TimeTracer.timed("TerminalBenchAgent.handle_request_iteration")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
@@ -157,7 +156,7 @@ class TerminalBenchAgent:
         """Send a minimal status update to keep the SSE stream alive."""
         if self._updater is not None:
             try:
-                await self._updater.working(
+                await self._updater.start_work(
                     new_agent_text_message(f"... {status} ...")
                 )
             except Exception as e:
