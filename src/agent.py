@@ -35,7 +35,7 @@ def _build_llm_client() -> AbstractLLMClient:
             backoff_base_delay=config.BACKOFF_BASE_DELAY,
         )
     if config.LLM_PROVIDER == "openrouter":
-        return OpenRouterLLMClient()
+        return OpenRouterLLMClient(model=config.OPENROUTER_MODEL)
     raise ValueError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER!r}")
 
 
