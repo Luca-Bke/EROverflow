@@ -12,6 +12,7 @@ from a2a.types import (
     AgentSkill,
 )
 
+from agents.terminal_bench_supplementary import utils
 from executor import Executor
 
 
@@ -30,9 +31,12 @@ def emit_startup_trace(host: str, port: int, card_url: str | None) -> dict[str, 
 
 def main():
     parser = argparse.ArgumentParser(description="Run the A2A agent.")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind the server")
-    parser.add_argument("--port", type=int, default=9010, help="Port to bind the server")
-    parser.add_argument("--card-url", type=str, help="URL to advertise in the agent card")
+    parser.add_argument("--host", type=str, default="127.0.0.1",
+                        help="Host to bind the server")
+    parser.add_argument("--port", type=int, default=9010,
+                        help="Port to bind the server")
+    parser.add_argument("--card-url", type=str,
+                        help="URL to advertise in the agent card")
     args = parser.parse_args()
 
     # Emit one startup trace as a clear lifecycle marker in LangSmith.
@@ -47,7 +51,8 @@ def main():
         name="Terminal Bench Shell",
         description="Solves command-line tasks via the terminal-bench-shell-v1 protocol",
         tags=["terminal", "shell", "cli"],
-        examples=["Fix the failing tests in this repo", "Install dependencies and run the build"]
+        examples=["Fix the failing tests in this repo",
+                  "Install dependencies and run the build"]
     )
 
     agent_card = AgentCard(
@@ -71,6 +76,11 @@ def main():
     )
     with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
         uvicorn.run(server.build(), host=args.host, port=args.port)
+
+    with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
+        utils.emit_timer_trace(
+            timer_sessions=utils.TimeTracer.timer_sessions
+        )
 
 
 if __name__ == '__main__':

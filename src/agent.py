@@ -18,8 +18,14 @@ from agents.terminal_bench_supplementary import utils
 
 def _build_llm_client() -> AbstractLLMClient:
     if config.LLM_PROVIDER == "l3s":
-        return L3SLLMClient(model=config.L3S_MODEL,
-                            base_url=config.L3S_ENDPOINT)
+        return L3SLLMClient(
+            model=config.L3S_MODEL,
+            base_url=config.L3S_ENDPOINT,
+            timeout=config.L3S_REQUEST_TIMEOUT,
+            backoff_enabled=config.ENABLE_RATE_LIMIT_BACKOFF,
+            backoff_max_retries=config.BACKOFF_MAX_RETRIES,
+            backoff_base_delay=config.BACKOFF_BASE_DELAY,
+        )
     if config.LLM_PROVIDER == "academiccloud":
         return AcademicCloudLLMClient(
             model=config.ACADEMICCLOUD_MODEL,
@@ -52,6 +58,8 @@ class Agent:
         self._max_turn_count = config.MAX_TURN_COUNT
         self._memory_log: list[dict[str, Any]] = []
 
+    @utils.TimeTracer.timed("Agent.run")
+    @utils.TimeTracer.inverse_timed("Agent.wait_for_response")
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         """ Check max turn count implement final tracing via langchain.
         Message processing is performed elsewhere. """
@@ -68,7 +76,11 @@ class Agent:
             new_agent_text_message(f"Turn {self._turn_count}: thinking...")
         )
 
-        response_result = await self._backend.handle_request_iteration(message, updater)
+        # LangChain auto-traces every ChatOpenAI call to LangSmith whenever
+        # LANGSMITH_TRACING is set — independent of our own @traceable calls.
+        # We only want our own session/timing traces, so suppress that here.
+        with tracing_context(enabled=False):
+            response_result = await self._backend.handle_request_iteration(message, updater)
 
         # Defensive: the backend now always returns a JSON string or raises, so
         # a None here means a contract violation — fail loudly with a clear
@@ -81,17 +93,6 @@ class Agent:
 
         self._memory_log.append(self._backend._memory.snapshot_memory())
 
-        if (utils.is_final_response(response_result) or
-                self._backend._llm_client.rate_limited()):
-
-            with tracing_context(enabled=self._trace_enabled):
-                utils.emit_session_trace(
-                    history=self._memory_log,
-                    turn_count=self._turn_count,
-                    rate_limited=self._backend._llm_client.rate_limited(),
-                    retry_log=self._backend._llm_client.retry_log(),
-                )
-
         # Send the agent response back to the A2A server. A task lives for only
         # one turn, so we must complete it exactly once — otherwise the executor
         # responds with an empty message and errors.
@@ -99,5 +100,19 @@ class Agent:
             parts=[Part(root=TextPart(text=response_result))]
         )
         await updater.complete(response_msg)
-
         self._turn_count += 1
+
+    def finalize_turn(self) -> None:
+        """Call only after run() — including its timing decorators — has fully
+        returned. run()'s own [Agent.run] entry is appended by its outer
+        @timed decorator's `finally`, which fires after run()'s body returns;
+        rotating the session from inside run() itself would strand that entry
+        in the next turn's session instead of this one."""
+        utils.TimeTracer.new_session()
+        utils.emit_session_trace(
+            history=self._memory_log,
+            turn_count=self._turn_count,
+            rate_limited=self._backend._llm_client.rate_limited(),
+            retry_log=self._backend._llm_client.retry_log(),
+            timer_sessions=utils.TimeTracer.timer_sessions
+        )

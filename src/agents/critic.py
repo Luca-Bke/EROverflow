@@ -18,9 +18,11 @@ from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.terminal_bench_supplementary import utils
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import (
     terminal_bench_format_exception,
 )
+from agents.terminal_bench_supplementary.utils import TimeTracer
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.response_format_checker import ResponseFormatChecker
 
@@ -41,7 +43,8 @@ class CriticAgent(AbstractAgent):
         self._max_verdict_attempts = 10
 
     @staticmethod
-    @traceable(name="ParseCriticVerdict", run_type="parser")
+    # @traceable(name="ParseCriticVerdict", run_type="parser")
+    @TimeTracer.timed("CriticAgent.invoke_async")
     def _parse_verdict(raw_critic_verdict: str) -> CriticVerdict:
         data: dict[str, Any] | None = None
         try:
@@ -92,25 +95,17 @@ class CriticAgent(AbstractAgent):
     @staticmethod
     def _compose_critic_message(
             messages: list[BaseMessage],
-            exec_request_candidate: str,
             static_syntax_validation_message: str) -> list[BaseMessage]:
 
-        exec_request_wrapped = (
-            "[EXEC_REQUEST_CANDIDATE] "
-            f"{exec_request_candidate}"
-        )
-        syntax_check_wrapped = (
-            "[STATIC_SYNTAX_VALIDATION] "
-            f"{static_syntax_validation_message}"
-        )
+        syntax_check_wrapped = utils.apply_message_label(
+            HumanMessage(content=static_syntax_validation_message),
+            "static_syntax_validation_message")
 
-        messages.append(HumanMessage(content=exec_request_wrapped))
-        messages.append(HumanMessage(content=syntax_check_wrapped))
+        messages.append(syntax_check_wrapped)
 
         return messages
 
     async def _review(self, messages: list[BaseMessage],
-                      exec_request_candidate: str,
                       static_syntax_validation_message: str) -> CriticVerdict:
         """Review the Actor's response. Returns a verdict with feedback.
 
@@ -119,12 +114,12 @@ class CriticAgent(AbstractAgent):
         """
 
         combined_critic_messages = self._compose_critic_message(
-            messages, exec_request_candidate, static_syntax_validation_message)
+            messages, static_syntax_validation_message)
 
         return await self._llm_client.invoke_async(combined_critic_messages)
 
     @override
-    @traceable(name="Critic", run_type="chain")
+    # @traceable(name="Critic", run_type="chain")
     async def invoke(self, messages: list[BaseMessage],
                      exec_request_candidate: str) -> CriticVerdict:
         # ── Static syntax checker — always the first, cheap gate ──────────
@@ -141,7 +136,7 @@ class CriticAgent(AbstractAgent):
 
         for i in range(self._max_verdict_attempts):
             try:
-                response = await self._review(messages, exec_request_candidate,
+                response = await self._review(messages,
                                               static_syntax_validation_message)
             except Exception as e:
                 return CriticVerdict(

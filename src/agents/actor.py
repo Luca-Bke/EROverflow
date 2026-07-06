@@ -3,6 +3,7 @@ from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.terminal_bench_supplementary.utils import TimeTracer
 
 
 class ActorAgent(AbstractAgent):
@@ -10,7 +11,8 @@ class ActorAgent(AbstractAgent):
 
     def __init__(self, llm_client: AbstractLLMClient) -> None:
         super().__init__(llm_client)
-    
-    @traceable(name="Actor", run_type="chain")
+
+    # @traceable(name="Actor", run_type="chain")
+    @TimeTracer.timed("ActorAgent.invoke_async")
     async def invoke(self, messages: list[BaseMessage]) -> BaseMessage:
         return await self._llm_client.invoke_async(messages)

@@ -13,6 +13,7 @@ from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
 
+
 @dataclass
 class PlannerOutput:
     updated_plan: list[str]
@@ -53,9 +54,8 @@ class PlannerAgent(AbstractAgent):
         return PlannerOutput(updated_plan=plan, task_formulation=task)
 
     @override
-    @traceable(name="Planner", run_type="chain")
-    async def invoke(self, messages: list[BaseMessage]) -> PlannerOutput:  # type: ignore[override]
+    # @traceable(name="Planner", run_type="chain")
+    @utils.TimeTracer.timed("PlannerAgent.invoke_async")
+    async def invoke(self, messages: list[BaseMessage]) -> PlannerOutput:
         response = await self._llm_client.invoke_async(messages)
         return self._split_agent_response(response)
-
-        
