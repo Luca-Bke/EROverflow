@@ -45,6 +45,7 @@ class OpenRouterLLMClient(AbstractLLMClient):
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=self._temperature,
+            timeout=180,
         )
         return self._llm
 

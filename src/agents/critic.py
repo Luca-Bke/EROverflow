@@ -96,11 +96,11 @@ class CriticAgent(AbstractAgent):
             static_syntax_validation_message: str) -> list[BaseMessage]:
 
         exec_request_wrapped = (
-            "Hallo"
+            "[EXEC_REQUEST_CANDIDATE] "
             f"{exec_request_candidate}"
         )
         syntax_check_wrapped = (
-            "Hallo"
+            "[STATIC_SYNTAX_VALIDATION] "
             f"{static_syntax_validation_message}"
         )
 

@@ -51,6 +51,7 @@ class AcademicCloudLLMClient(AbstractLLMClient):
             api_key=api_key,
             base_url=self._base_url,
             temperature=self._temperature,
+            timeout=180,
             tags=["eroverflow", "terminal-bench"],
             metadata={"agent": "terminal_bench", "provider": "academiccloud"},
         )

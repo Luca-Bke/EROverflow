@@ -14,6 +14,7 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Message
 from langsmith import traceable
 from openai import RateLimitError
+from openai import APITimeoutError
 
 from agents.actor import ActorAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
@@ -45,6 +46,7 @@ class TerminalBenchAgent:
 
         self._llm_client = llm_client
         self._max_critic_actor_rounds = max_critic_actor_rounds
+        self._updater: TaskUpdater | None = None  # für heartbeat-Updates
 
         self._memory = AgentMemory(
             planner_system_prompt=planner_system_prompt,
@@ -61,6 +63,7 @@ class TerminalBenchAgent:
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
         actor_result = await self._actor_agent.invoke(actor_messages)
+        await self._send_heartbeat("actor done")
         exec_request = getattr(actor_result, "content")
         self._memory.set_execution_request_candidate(exec_request)
 
@@ -73,6 +76,7 @@ class TerminalBenchAgent:
         print(f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
         critic_result = await self._critic_agent.invoke(
             critic_messages, exec_request)
+        await self._send_heartbeat("critic done")
 
         print(f"critic result:\n{critic_result}\n")
 
@@ -88,6 +92,7 @@ class TerminalBenchAgent:
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         self._turn_count += 1
+        self._updater = updater  # speichern für heartbeat-Updates
 
         try:
             input_text = get_message_text(message)
@@ -107,6 +112,7 @@ class TerminalBenchAgent:
             print(f"planner messages:\n{planner_messages}\n")
 
             planner_output = await self._planner_agent.invoke(planner_messages)
+            await self._send_heartbeat("planner done")
             self._memory.set_plan(planner_output.updated_plan)
             self._memory.set_subtask_formulation(
                 planner_output.task_formulation)
@@ -120,8 +126,8 @@ class TerminalBenchAgent:
                 feedback = await self.__run_actor_critic_loop__()
                 if feedback is not None:
                     return feedback
-        except RateLimitError:
-            print("Rate limit was previously hit; returning final.")
+        except (RateLimitError, APITimeoutError):
+            print("Rate limit or timeout hit; returning final.")
             return json.dumps({"kind": "final"})
         except Exception as e:
             # Surface the real cause instead of silently returning None (which
@@ -140,6 +146,16 @@ class TerminalBenchAgent:
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         return await self.handle_request_iteration(message, updater)
+
+    async def _send_heartbeat(self, status: str) -> None:
+        """Send a minimal status update to keep the SSE stream alive."""
+        if self._updater is not None:
+            try:
+                await self._updater.working(
+                    new_agent_text_message(f"... {status} ...")
+                )
+            except Exception as e:
+                print(f"Heartbeat failed (non-fatal): {e}")
 
 
 __all__ = ["TerminalBenchAgent"]

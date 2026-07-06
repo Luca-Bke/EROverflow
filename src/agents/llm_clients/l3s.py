@@ -13,7 +13,7 @@ class L3SLLMClient(AbstractLLMClient):
 
     def __init__(
         self,
-        model: str = "ollama/qwen3.6:27b",
+        model: str = "vllm/qwen3.6:27b-fp8",
         base_url: str = "https://inference.kbs.uni-hannover.de/v1",  # "https://brrr.kbs.uni-hannover.de/v1",
         temperature: float = 0.7,
     ) -> None:
@@ -44,6 +44,7 @@ class L3SLLMClient(AbstractLLMClient):
             api_key=api_key,
             base_url=self._base_url,
             temperature=self._temperature,
+            timeout=180,
         )
         return self._llm
 
