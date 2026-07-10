@@ -196,7 +196,7 @@ LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
 
 # ── OpenRouter ───────────────────────────────────────────────────────────────
 
-OPENROUTER_MODEL = "qwen/qwen3-coder:free"
+OPENROUTER_MODEL = "qwen/qwen3.6-27b"
 
 # ── L3S / LLMHub ─────────────────────────────────────────────────────────────
 
