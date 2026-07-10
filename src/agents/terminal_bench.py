@@ -87,6 +87,9 @@ class TerminalBenchAgent:
                 self._memory.get_execution_request_candidate(), "content")
             print(f"Approved exec request: {exec_request}")
             self._memory.add(AIMessage(content=exec_request))
+            # Feedback referred to a rejected predecessor of this candidate;
+            # clear it so later turns don't act on stale criticism.
+            self._memory.set_critic_feedback(None)
             return exec_request
         else:
             self._memory.set_critic_feedback(critic_result.feedback)
@@ -100,6 +103,10 @@ class TerminalBenchAgent:
         self._updater = updater  # speichern für heartbeat-Updates
 
         try:
+            # Any leftover critic feedback belongs to last turn's candidate
+            # (e.g. when the round budget ran out before an approval).
+            self._memory.set_critic_feedback(None)
+
             input_text = get_message_text(message)
             input_dict = json.loads(input_text)
             if input_dict.get("kind") == "task":

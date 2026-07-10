@@ -92,6 +92,15 @@ def test_memory_set_plan_from_list():
     assert "a" in plan.content and "c" in plan.content
 
 
+def test_memory_critic_feedback_cleared_with_none():
+    sys = SystemMessage(content="sys")
+    mem = AgentMemory(sys, sys, sys, short_term_window=10)
+    mem.set_critic_feedback("send only one command")
+    assert mem.get_critic_feedback() is not None
+    mem.set_critic_feedback(None)
+    assert mem.get_critic_feedback() is None
+
+
 def test_memory_window_keeps_last_10_short_term():
     sys = SystemMessage(content="sys")
     mem = AgentMemory(sys, sys, sys, short_term_window=10)
@@ -178,6 +187,9 @@ async def test_critic_rejection_blocks_then_approval_sends(agent):
     assert result == good
     assert agent._critic_agent.invoke.await_count == 3
     assert agent._actor_agent.invoke.await_count == 3
+    # The rejection feedback referred to a superseded candidate — once one is
+    # approved it must not leak into the next turn's actor prompt.
+    assert agent._memory.get_critic_feedback() is None
 
 
 # ── exec_result output truncation (no LLM) ─────────────────────────────────────
