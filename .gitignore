@@ -232,3 +232,6 @@ wheels/
 # Virtual environments
 .venv
 test.txt
+
+src/api_bandwith_benchmark/results/*
+*pycache*
