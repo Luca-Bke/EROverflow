@@ -186,7 +186,7 @@ RECON_CMD = (
 
 # ── LLM provider selection ───────────────────────────────────────────────────
 
-LLM_PROVIDER = "openrouter"
+LLM_PROVIDER = "academiccloud"
 
 LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
     "openrouter": OpenRouterLLMClient,
@@ -200,7 +200,7 @@ OPENROUTER_MODEL = "qwen/qwen3.6-27b"
 
 # ── L3S / LLMHub ─────────────────────────────────────────────────────────────
 
-#L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
+# L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
 L3S_MODEL = "vllm/qwen3.6:27b-fp8"
 L3S_ENDPOINT = "https://inference.kbs.uni-hannover.de/v1"  #"https://brrr.kbs.uni-hannover.de/v1"
 
@@ -215,7 +215,7 @@ ACADEMICCLOUD_ENDPOINT = "https://chat-ai.academiccloud.de/v1"
 
 # ── Rate-limit backoff (used by AcademicCloudLLMClient) ──────────────────────
 
-ENABLE_RATE_LIMIT_BACKOFF = True
+ENABLE_RATE_LIMIT_BACKOFF = False
 BACKOFF_MAX_RETRIES = 4
 BACKOFF_BASE_DELAY = 5.0
 
