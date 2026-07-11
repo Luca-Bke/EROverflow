@@ -186,13 +186,17 @@ RECON_CMD = (
 
 # ── LLM provider selection ───────────────────────────────────────────────────
 
-LLM_PROVIDER = "l3s"
+LLM_PROVIDER = "openrouter"
 
 LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
     "openrouter": OpenRouterLLMClient,
     "academiccloud": AcademicCloudLLMClient,
     "l3s": L3SLLMClient,
 }
+
+# ── OpenRouter ───────────────────────────────────────────────────────────────
+
+OPENROUTER_MODEL = "qwen/qwen3.6-27b"
 
 # ── L3S / LLMHub ─────────────────────────────────────────────────────────────
 

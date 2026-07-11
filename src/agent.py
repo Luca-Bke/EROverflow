@@ -5,7 +5,7 @@ from typing import Any
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, Part, TextPart
 from a2a.utils import new_agent_text_message
-from langsmith import tracing_context
+from langsmith import traceable, tracing_context
 
 from agents.configuration import config
 from agents.llm_clients.l3s import L3SLLMClient
@@ -35,7 +35,7 @@ def _build_llm_client() -> AbstractLLMClient:
             backoff_base_delay=config.BACKOFF_BASE_DELAY,
         )
     if config.LLM_PROVIDER == "openrouter":
-        return OpenRouterLLMClient()
+        return OpenRouterLLMClient(model=config.OPENROUTER_MODEL)
     raise ValueError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER!r}")
 
 
@@ -60,7 +60,8 @@ class Agent:
 
     @utils.TimeTracer.timed("Agent.run")
     @utils.TimeTracer.inverse_timed("Agent.wait_for_response")
-    async def run(self, message: Message, updater: TaskUpdater) -> None:
+    @traceable(name="agent.run", run_type="chain")
+    async def run(self, message: Message, updater: TaskUpdater) -> dict[str, Any]:
         """ Check max turn count implement final tracing via langchain.
         Message processing is performed elsewhere. """
         # Out of turn budget: send a clean final so the executor never has to
@@ -68,9 +69,14 @@ class Agent:
         if self._turn_count >= self._max_turn_count:
             print("Max turn count reached; sending final.")
             final_msg = json.dumps({"kind": "final"})
-            await updater.complete(updater.new_agent_message(
-                parts=[Part(root=TextPart(text=final_msg))]))
-            return
+            response_msg = updater.new_agent_message(
+                parts=[Part(root=TextPart(text=final_msg))])
+            await updater.complete(response_msg)
+            return {
+                "event": "max_turns_reached",
+                "response": final_msg,
+                "turn_count": self._turn_count
+            }
 
         await updater.start_work(
             new_agent_text_message(f"Turn {self._turn_count}: thinking...")
@@ -79,8 +85,8 @@ class Agent:
         # LangChain auto-traces every ChatOpenAI call to LangSmith whenever
         # LANGSMITH_TRACING is set — independent of our own @traceable calls.
         # We only want our own session/timing traces, so suppress that here.
-        with tracing_context(enabled=False):
-            response_result = await self._backend.handle_request_iteration(message, updater)
+        # with tracing_context(enabled=False):
+        response_result = await self._backend.handle_request_iteration(message, updater)
 
         # Defensive: the backend now always returns a JSON string or raises, so
         # a None here means a contract violation — fail loudly with a clear
@@ -101,6 +107,12 @@ class Agent:
         )
         await updater.complete(response_msg)
         self._turn_count += 1
+        
+        return {
+            "event": "response_sent",
+            "response": response_result,
+            "turn_count": self._turn_count
+        }
 
     def finalize_turn(self) -> None:
         """Call only after run() — including its timing decorators — has fully

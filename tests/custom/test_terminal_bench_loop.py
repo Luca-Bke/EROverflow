@@ -178,6 +178,7 @@ async def test_terminal_bench_loop(agent, messenger, docker_container):
             print(
                 f"\nStarting DooD terminal bench, container: {docker_container[:12]}")
             response = await messenger.talk_to_agent(current_request, agent)
+            print(response)
         else:
             try:
                 payload = json.loads(response)

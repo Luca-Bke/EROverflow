@@ -15,6 +15,7 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Message
 from langsmith import traceable
 from openai import RateLimitError
+from openai import APITimeoutError
 
 from agents.actor import ActorAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
@@ -22,7 +23,7 @@ from agents.planner import PlannerAgent
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
 from agents.critic import CriticAgent
-from a2a.utils import get_message_text
+from a2a.utils import get_message_text, new_agent_text_message
 
 
 class TerminalBenchAgent:
@@ -45,6 +46,7 @@ class TerminalBenchAgent:
 
         self._llm_client = llm_client
         self._max_critic_actor_rounds = max_critic_actor_rounds
+        self._updater: TaskUpdater | None = None  # für heartbeat-Updates
 
         self._memory = AgentMemory(
             planner_system_prompt=planner_system_prompt,
@@ -56,12 +58,12 @@ class TerminalBenchAgent:
         self._actor_agent = ActorAgent(llm_client)
         self._turn_count = 0
 
-    # @traceable(name="Actor Critic Loop", run_type="chain")
-
+    @traceable(name="Actor Critic Loop", run_type="chain")
     async def __run_actor_critic_loop__(self):
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
         actor_result = await self._actor_agent.invoke(actor_messages)
+        await self._send_heartbeat("actor done")
         exec_request = getattr(actor_result, "content")
         self._memory.set_execution_request_candidate(exec_request)
 
@@ -76,6 +78,7 @@ class TerminalBenchAgent:
             f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
         critic_result = await self._critic_agent.invoke(
             critic_messages, exec_request)
+        await self._send_heartbeat("critic done")
 
         print(f"critic result:\n{critic_result}\n")
 
@@ -84,18 +87,26 @@ class TerminalBenchAgent:
                 self._memory.get_execution_request_candidate(), "content")
             print(f"Approved exec request: {exec_request}")
             self._memory.add(AIMessage(content=exec_request))
+            # Feedback referred to a rejected predecessor of this candidate;
+            # clear it so later turns don't act on stale criticism.
+            self._memory.set_critic_feedback(None)
             return exec_request
         else:
             self._memory.set_critic_feedback(critic_result.feedback)
             return None
 
-    # @traceable(name="Turn", run_type="chain")
+    @traceable(name="Turn", run_type="chain")
     @utils.TimeTracer.timed("TerminalBenchAgent.handle_request_iteration")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:
         self._turn_count += 1
+        self._updater = updater  # speichern für heartbeat-Updates
 
         try:
+            # Any leftover critic feedback belongs to last turn's candidate
+            # (e.g. when the round budget ran out before an approval).
+            self._memory.set_critic_feedback(None)
+
             input_text = get_message_text(message)
             input_dict = json.loads(input_text)
             if input_dict.get("kind") == "task":
@@ -113,6 +124,7 @@ class TerminalBenchAgent:
             print(f"planner messages:\n{planner_messages}\n")
 
             planner_output = await self._planner_agent.invoke(planner_messages)
+            await self._send_heartbeat("planner done")
             self._memory.set_plan(planner_output.updated_plan)
             self._memory.set_subtask_formulation(
                 planner_output.task_formulation)
@@ -126,8 +138,8 @@ class TerminalBenchAgent:
                 feedback = await self.__run_actor_critic_loop__()
                 if feedback is not None:
                     return feedback
-        except RateLimitError:
-            print("Rate limit was previously hit; returning final.")
+        except (RateLimitError, APITimeoutError):
+            print("Rate limit or timeout hit; returning final.")
             return json.dumps({"kind": "final"})
         except Exception as e:
             # Surface the real cause instead of silently returning None (which
@@ -146,6 +158,16 @@ class TerminalBenchAgent:
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
         return await self.handle_request_iteration(message, updater)
+
+    async def _send_heartbeat(self, status: str) -> None:
+        """Send a minimal status update to keep the SSE stream alive."""
+        if self._updater is not None:
+            try:
+                await self._updater.start_work(
+                    new_agent_text_message(f"... {status} ...")
+                )
+            except Exception as e:
+                print(f"Heartbeat failed (non-fatal): {e}")
 
 
 __all__ = ["TerminalBenchAgent"]

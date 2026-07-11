@@ -106,9 +106,15 @@ class AgentMemory:
 
     # ── Critic feedback ───────────────────────────────────────────────────────
 
-    def set_critic_feedback(self, feedback: str | HumanMessage) -> None:
-        """Store the critic's latest feedback on the execution request candidate."""
-        if isinstance(feedback, HumanMessage):
+    def set_critic_feedback(self, feedback: str | HumanMessage | None) -> None:
+        """Store the critic's latest feedback on the execution request candidate.
+
+        Pass None to clear stale feedback once the candidate it refers to has
+        been approved or the turn is over.
+        """
+        if feedback is None:
+            self._critic_feedback = None
+        elif isinstance(feedback, HumanMessage):
             self._critic_feedback = feedback
         else:
             self._critic_feedback = CriticFeedbackMessage(
