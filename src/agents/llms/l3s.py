@@ -43,7 +43,7 @@ class L3SLLMClient(TerminalBenchLLMClientInterface):
         self._llm = ChatOpenAI(
             model=self._model,
             api_key=api_key,
-            base_url="https://brrr.kbs.uni-hannover.de/v1",
+            base_url="https://inference.kbs.uni-hannover.de/v1",
             temperature=self._temperature,
         )
         return self._llm
