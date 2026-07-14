@@ -1,11 +1,11 @@
 import os
-import asyncio
 from typing import Any
 
 from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.llm_clients.retry import ainvoke_with_backoff
 
 
 class OpenRouterLLMClient(AbstractLLMClient):
@@ -15,10 +15,21 @@ class OpenRouterLLMClient(AbstractLLMClient):
     async context (matches the signature used in `src/agent.py`).
     """
 
-    def __init__(self, model: str | None = None,
-                 temperature: float = 0.7) -> None:
+    def __init__(
+        self,
+        model: str | None = None,
+        temperature: float = 0.7,
+        timeout: float = 180.0,
+        backoff_enabled: bool = True,
+        backoff_max_retries: int = 4,
+        backoff_base_delay: float = 5.0,
+    ) -> None:
         self._model = model or "openai/gpt-oss-120b:free"
         self._temperature = temperature
+        self._timeout = timeout
+        self._backoff_enabled = backoff_enabled
+        self._backoff_max_retries = backoff_max_retries
+        self._backoff_base_delay = backoff_base_delay
         self._llm: ChatOpenAI | None = None
         self._rate_limited = False
         self._retry_log: list[dict] = []
@@ -45,16 +56,22 @@ class OpenRouterLLMClient(AbstractLLMClient):
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=self._temperature,
-            timeout=180,
+            timeout=self._timeout,
+            max_retries=0,  # our own backoff is the single retry source
         )
         return self._llm
 
     async def invoke_async(self, messages: list[Any]) -> Any:
         llm = self._create_llm()
-        loop = asyncio.get_running_loop()
+        max_retries = self._backoff_max_retries if self._backoff_enabled else 1
         try:
-            return await loop.run_in_executor(None, lambda: llm.invoke(messages))
-        except RateLimitError as e:
+            return await ainvoke_with_backoff(
+                llm,
+                messages,
+                max_retries=max_retries,
+                base_delay=self._backoff_base_delay,
+                retry_log=self._retry_log,
+            )
+        except RateLimitError:
             self._rate_limited = True
-            self._retry_log.append({"exhausted": True, "error": str(e)[:300]})
             raise

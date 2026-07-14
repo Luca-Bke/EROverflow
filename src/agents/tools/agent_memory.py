@@ -18,7 +18,7 @@ class AgentMemory:
     Holds the three agent system prompts and the shared state they read/write:
       - plan: planner's current execution plan (one message, overwritten on update)
       - task_formulation: planner's sub-task instruction for the actor (one message)
-      - short_term: rolling window of execution results and AI responses
+      - chat_history: full conversation history (execution results, AI responses, plan)
       - execution_request_candidate: actor's proposed shell command (one message)
       - critic_feedback: critic's latest verdict on the candidate (one message)
 
@@ -41,7 +41,7 @@ class AgentMemory:
         self._subtask_formulation: HumanMessage | None = None
         self._execution_request_candidate: HumanMessage | None = None
         self._critic_feedback: HumanMessage | None = None
-        self._short_term: deque[Any] = deque(maxlen=short_term_window)
+        self._chat_history: list[Any] = []
 
     # ── Task ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,7 @@ class AgentMemory:
             self._plan = HumanTaskMessage(content=str(plan))
 
         self._plan = apply_message_label(
-            self._plan, "Plan Created By Planner Agent")
+            self._plan, "Plan for solving given Task")
 
     def get_plan(self) -> HumanMessage | None:
         return self._plan
@@ -84,9 +84,6 @@ class AgentMemory:
         else:
             self._subtask_formulation = TaskFormulationMessage(
                 content=str(formulation))
-
-        self._subtask_formulation = apply_message_label(
-            self._subtask_formulation, "Subtask Created By Planner Agent")
 
     def get_subtask_formulation(self) -> HumanMessage | None:
         return self._subtask_formulation
@@ -123,47 +120,40 @@ class AgentMemory:
     def get_critic_feedback(self) -> HumanMessage | None:
         return self._critic_feedback
 
-    # ── Short-term history ────────────────────────────────────────────────────
+    # ── Chat history ──────────────────────────────────────────────────────────
 
     def add(self, message: Any) -> None:
-        """Append a message to the short-term rolling window."""
-        self._short_term.append(message)
+        """Append a message to the chat history (keeps all messages)."""
+        self._chat_history.append(message)
 
     # ── Message builders ──────────────────────────────────────────────────────
 
     def build_planner_messages(self) -> list[Any]:
-        """planner_system_prompt + task + plan + short-term history"""
+        """planner_system_prompt + task + chat history (includes plan)"""
         messages: list[Any] = [self._planner_system_prompt]
         if self._task:
             messages.append(self._task)
-        if self._plan:
-            messages.append(self._plan)
-        messages.append(HumanMessage(
-            content="The following is the short time history of executed commands:"))
-        messages.extend(self._short_term)
+        messages.extend(self._chat_history)
         return messages
 
     def build_actor_messages(self) -> list[Any]:
-        """actor_system_prompt + task + task_formulation + short-term history + critic_feedback"""
+        """actor_system_prompt + task + chat history + subtask formulation"""
         messages: list[Any] = [self._actor_system_prompt]
         if self._task:
             messages.append(self._task)
+        messages.extend(self._chat_history)
         if self._subtask_formulation:
             messages.append(self._subtask_formulation)
-        messages.append(HumanMessage(
-            content="The following is the short time history of executed commands:"))
-        messages.extend(self._short_term)
-        if self._critic_feedback:
-            messages.append(self._critic_feedback)
         return messages
 
     def build_critic_messages(self) -> list[Any]:
-        """critic_system_prompt + task + execution_request_candidate"""
+        """critic_system_prompt + execution_request_candidate only
+
+        The critic only needs the exec request it is judging plus its own
+        system prompt.  Syntax-validation feedback is injected by the
+        CriticAgent itself (via `_compose_critic_message`).
+        """
         messages: list[Any] = [self._critic_system_prompt]
-        if self._task:
-            messages.append(self._task)
-        if self._subtask_formulation:
-            messages.append(self._subtask_formulation)
         if self._execution_request_candidate:
             messages.append(self._execution_request_candidate)
         return messages
@@ -175,5 +165,5 @@ class AgentMemory:
             "subtask": self._subtask_formulation,
             "req_cand": self._execution_request_candidate,
             "critic_feed": self._critic_feedback,
-            "memory": self._short_term
+            "memory": self._chat_history
         }

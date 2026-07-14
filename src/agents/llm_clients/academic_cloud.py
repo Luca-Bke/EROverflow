@@ -1,4 +1,3 @@
-import asyncio
 import os
 from typing import Any
 
@@ -6,6 +5,7 @@ from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.llm_clients.retry import ainvoke_with_backoff
 
 
 class AcademicCloudLLMClient(AbstractLLMClient):
@@ -17,6 +17,7 @@ class AcademicCloudLLMClient(AbstractLLMClient):
         model: str = "qwen3.6-35b-a3b",
         base_url: str = "https://chat-ai.academiccloud.de/v1",
         temperature: float = 0.7,
+        timeout: float = 180.0,
         backoff_enabled: bool = True,
         backoff_max_retries: int = 4,
         backoff_base_delay: float = 5.0,
@@ -24,6 +25,7 @@ class AcademicCloudLLMClient(AbstractLLMClient):
         self._model = model
         self._base_url = base_url
         self._temperature = temperature
+        self._timeout = timeout
         self._backoff_enabled = backoff_enabled
         self._backoff_max_retries = backoff_max_retries
         self._backoff_base_delay = backoff_base_delay
@@ -51,41 +53,25 @@ class AcademicCloudLLMClient(AbstractLLMClient):
             api_key=api_key,
             base_url=self._base_url,
             temperature=self._temperature,
-            timeout=180,
+            timeout=self._timeout,
+            max_retries=0,  # our own backoff is the single retry source
             tags=["eroverflow", "terminal-bench"],
             metadata={"agent": "terminal_bench", "provider": "academiccloud"},
         )
         return self._llm
 
     async def invoke_async(self, messages: list[Any]) -> Any:
-        """Invoke the LLM, retrying with exponential backoff on 429s."""
+        """Invoke the LLM, retrying with exponential backoff on transient errors."""
         llm = self._create_llm()
-        loop = asyncio.get_running_loop()
-        max_attempts = self._backoff_max_retries if self._backoff_enabled else 1
-
-        for attempt in range(max_attempts):
-            try:
-                return await loop.run_in_executor(None, lambda: llm.invoke(messages))
-            except RateLimitError as e:
-                if self._backoff_enabled and attempt < max_attempts - 1:
-                    delay = self._backoff_base_delay * (2 ** attempt)
-                    self._retry_log.append({
-                        "attempt": attempt + 1,
-                        "max_attempts": max_attempts,
-                        "delay_seconds": delay,
-                        "error": str(e)[:300],
-                    })
-                    print(
-                        f"Rate limit hit (attempt {attempt + 1}/{max_attempts}),"
-                        f" retrying in {delay:.0f}s..."
-                    )
-                    await asyncio.sleep(delay)
-                else:
-                    self._rate_limited = True
-                    self._retry_log.append({
-                        "attempt": attempt + 1,
-                        "max_attempts": max_attempts,
-                        "exhausted": True,
-                        "error": str(e)[:300],
-                    })
-                    raise
+        max_retries = self._backoff_max_retries if self._backoff_enabled else 1
+        try:
+            return await ainvoke_with_backoff(
+                llm,
+                messages,
+                max_retries=max_retries,
+                base_delay=self._backoff_base_delay,
+                retry_log=self._retry_log,
+            )
+        except RateLimitError:
+            self._rate_limited = True
+            raise

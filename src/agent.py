@@ -6,6 +6,7 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, Part, TextPart
 from a2a.utils import new_agent_text_message
 from langsmith import traceable, tracing_context
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.configuration import config
 from agents.llm_clients.l3s import L3SLLMClient
@@ -43,9 +44,9 @@ class Agent:
     def __init__(self):
         self._backend = TerminalBenchAgent(
             llm_client=_build_llm_client(),
-            planner_system_prompt=config.PLANNER_SYSTEM_PROMPT,
-            actor_system_prompt=config.ACTOR_SYSTEM_PROMPT,
-            critic_system_prompt=config.CRITIC_SYSTEM_PROMPT,
+            planner_system_prompt=SystemMessage(content=config.PLANNER_SYSTEM_PROMPT),
+            actor_system_prompt=SystemMessage(content=config.ACTOR_SYSTEM_PROMPT),
+            critic_system_prompt=SystemMessage(content=config.CRITIC_SYSTEM_PROMPT),
             max_critic_actor_rounds=10,
             short_term_window=config.SHORT_TERM_WINDOW,
         )

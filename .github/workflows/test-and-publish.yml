@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - personal/luca
+      - personal/*
     tags:
       - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0
 
@@ -34,7 +34,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=dev
+            type=ref,event=branch
 
       - name: Build Docker image
         uses: docker/build-push-action@v5

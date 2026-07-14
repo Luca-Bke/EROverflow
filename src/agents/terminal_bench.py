@@ -60,40 +60,46 @@ class TerminalBenchAgent:
 
     @traceable(name="Actor Critic Loop", run_type="chain")
     async def __run_actor_critic_loop__(self):
-        actor_messages = self._memory.build_actor_messages()
-        print(f"actor messages:\n{actor_messages}\n")
-        actor_result = await self._actor_agent.invoke(actor_messages)
-        await self._send_heartbeat("actor done")
-        exec_request = getattr(actor_result, "content")
-        self._memory.set_execution_request_candidate(exec_request)
+        critic_feedback: str | None = None
 
-        print(f"actor result:\n{actor_result}\n")
+        for _ in range(self._max_critic_actor_rounds):
+            # Build actor messages + optionales Feedback aus diesem Loop
+            actor_messages = self._memory.build_actor_messages()
+            if critic_feedback:
+                actor_messages.append(HumanMessage(content=critic_feedback))
 
-        critic_messages = self._memory.build_critic_messages()
-        print(f"critic messages:\n{critic_messages}\n")
+            print(f"actor messages:\n{actor_messages}\n")
+            actor_result = await self._actor_agent.invoke(actor_messages)
+            await self._send_heartbeat("actor done")
+            exec_request = getattr(actor_result, "content")
+            self._memory.set_execution_request_candidate(exec_request)
 
-        exec_request = getattr(
-            self._memory.get_execution_request_candidate(), "content")
-        print(
-            f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
-        critic_result = await self._critic_agent.invoke(
-            critic_messages, exec_request)
-        await self._send_heartbeat("critic done")
+            print(f"actor result:\n{actor_result}\n")
 
-        print(f"critic result:\n{critic_result}\n")
+            critic_messages = self._memory.build_critic_messages()
+            print(f"critic messages:\n{critic_messages}\n")
 
-        if (critic_result.approved):  # if the critic accepts
             exec_request = getattr(
                 self._memory.get_execution_request_candidate(), "content")
-            print(f"Approved exec request: {exec_request}")
-            self._memory.add(AIMessage(content=exec_request))
-            # Feedback referred to a rejected predecessor of this candidate;
-            # clear it so later turns don't act on stale criticism.
-            self._memory.set_critic_feedback(None)
-            return exec_request
-        else:
-            self._memory.set_critic_feedback(critic_result.feedback)
-            return None
+            print(
+                f"Execution request candidate to be judged by the critic:\n{exec_request}\n")
+            critic_result = await self._critic_agent.invoke(
+                critic_messages, exec_request)
+            await self._send_heartbeat("critic done")
+
+            print(f"critic result:\n{critic_result}\n")
+
+            if critic_result.approved:
+                exec_request = getattr(
+                    self._memory.get_execution_request_candidate(), "content")
+                print(f"Approved exec request: {exec_request}")
+                self._memory.add(AIMessage(content=exec_request))
+                return exec_request
+            else:
+                # Feedback bleibt lokal — wird NICHT im Memory gespeichert
+                critic_feedback = critic_result.feedback
+
+        return None
 
     @traceable(name="Turn", run_type="chain")
     @utils.TimeTracer.timed("TerminalBenchAgent.handle_request_iteration")
@@ -103,14 +109,31 @@ class TerminalBenchAgent:
         self._updater = updater  # speichern für heartbeat-Updates
 
         try:
-            # Any leftover critic feedback belongs to last turn's candidate
-            # (e.g. when the round budget ran out before an approval).
-            self._memory.set_critic_feedback(None)
-
             input_text = get_message_text(message)
             input_dict = json.loads(input_text)
             if input_dict.get("kind") == "task":
                 self._memory.set_task(HumanMessage(content=input_text))
+
+                # ── Planner nur beim ersten Turn ──────────────────────
+                planner_messages = self._memory.build_planner_messages()
+                print(f"planner messages:\n{planner_messages}\n")
+
+                planner_output = await self._planner_agent.invoke(planner_messages)
+                await self._send_heartbeat("planner done")
+
+                # Plan als persistente Nachricht in die Chat History (nach der Task)
+                plan_content = json.dumps(planner_output.updated_plan, indent=2)
+                self._memory.add(HumanMessage(
+                    content=f"[Plan for solving given Task]\n{plan_content}"))
+
+                # TODO: subtask formulation temporarily disabled
+                # self._memory.set_subtask_formulation(
+                #     planner_output.task_formulation)
+
+                print(f"planner result plan:\n{planner_output.updated_plan}\n")
+                print(f"planner result task:\n{planner_output.task_formulation}\n")
+                # ───────────────────────────────────────────────────────
+
             elif input_dict.get("kind") == "exec_result":
                 self._memory.add(
                     HumanMessage(
@@ -120,24 +143,10 @@ class TerminalBenchAgent:
                 print(
                     f"Received unknown message type: {input_dict.get('kind')}")
 
-            planner_messages = self._memory.build_planner_messages()
-            print(f"planner messages:\n{planner_messages}\n")
-
-            planner_output = await self._planner_agent.invoke(planner_messages)
-            await self._send_heartbeat("planner done")
-            self._memory.set_plan(planner_output.updated_plan)
-            self._memory.set_subtask_formulation(
-                planner_output.task_formulation)
-
-            print(f"planner result plan:\n{planner_output.updated_plan}\n")
-            print(f"planner result task:\n{planner_output.task_formulation}\n")
-
-            critic_actor_rounds = 0
-            while critic_actor_rounds < self._max_critic_actor_rounds:
-                critic_actor_rounds += 1
-                feedback = await self.__run_actor_critic_loop__()
-                if feedback is not None:
-                    return feedback
+            # ── Actor-Critic Loop (in jedem Turn) ──────────────────────
+            feedback = await self.__run_actor_critic_loop__()
+            if feedback is not None:
+                return feedback
         except (RateLimitError, APITimeoutError):
             print("Rate limit or timeout hit; returning final.")
             return json.dumps({"kind": "final"})
