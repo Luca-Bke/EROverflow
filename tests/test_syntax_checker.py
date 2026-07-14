@@ -54,12 +54,14 @@ def test_multiline_command_passes():
     ExecRequestChecker.check_command_syntax("echo hello\necho world")
 
 
-def test_invalid_syntax_raises():
+def test_invalid_syntax_raises(monkeypatch):
+    monkeypatch.setattr(ExecRequestChecker, '_bash_available', True)
     with pytest.raises(terminal_bench_format_exception, match="invalid shell syntax"):
         ExecRequestChecker.check_command_syntax("if then done")
 
 
-def test_unclosed_quote_raises():
+def test_unclosed_quote_raises(monkeypatch):
+    monkeypatch.setattr(ExecRequestChecker, '_bash_available', True)
     with pytest.raises(terminal_bench_format_exception):
         ExecRequestChecker.check_command_syntax("echo 'hello")
 
@@ -120,7 +122,8 @@ def test_valid_exec_request_passes():
     assert result["kind"] == "exec_request"
 
 
-def test_invalid_command_in_exec_request_raises():
+def test_invalid_command_in_exec_request_raises(monkeypatch):
+    monkeypatch.setattr(ExecRequestChecker, '_bash_available', True)
     payload = json.dumps(
         {"kind": "exec_request", "command": "if then done", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception):

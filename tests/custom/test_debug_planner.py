@@ -179,22 +179,16 @@ async def test_critic_approves_valid_exec_request():
 @pytest.mark.asyncio
 async def test_live_planner_returns_valid_output():
     """Calls the configured LLM provider once and prints the planner output."""
-    from agents.agent import _build_llm_client  # noqa: PLC0415
+    from src.agent import _build_llm_client  # noqa: PLC0415
 
     client = _build_llm_client()
-    memory = AgentMemory(
-        SystemMessage(content=PLANNER_SYSTEM_PROMPT),
-        SystemMessage(content="actor"),
-        SystemMessage(content="critic"),
-        short_term_window=5,
-    )
     planner = PlannerAgent(client)
 
     task = json.dumps({
         "kind": "task",
         "instruction": "Find all .txt files in /tmp and print their contents.",
     })
-    out = await planner.invoke(_make_message(task), memory)
+    out = await planner.invoke([HumanMessage(content=task)])
 
     print("\n── Planner output ──")
     print("updated_plan:", out.updated_plan)

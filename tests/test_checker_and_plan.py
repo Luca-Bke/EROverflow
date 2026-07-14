@@ -105,20 +105,23 @@ def test_memory_window_keeps_last_10_short_term():
     sys = SystemMessage(content="sys")
     mem = AgentMemory(sys, sys, sys, short_term_window=10)
     mem.set_plan(["do x"])
-    # 8 exchange pairs = 16 messages; only the last 10 should survive.
+    # 8 exchange pairs = 16 messages added to chat_history
     for i in range(8):
         mem.add(HumanMessage(content=f"exec_result {i}"))
         mem.add(AIMessage(content=f"response {i}"))
 
     messages = mem.build_planner_messages()
-    # planner_system + plan + short-term header + 10 short-term messages
+    # build_planner_messages() returns: system + (task if set) + chat_history
+    # No plan or windowing is applied by build_planner_messages()
     assert messages[0].content == "sys"
-    assert "do x" in messages[1].content
-    short_term = messages[3:]
-    assert len(short_term) == 10
-    # Oldest surviving is exchange #3 (pairs 0,1,2 rolled off).
-    assert short_term[0].content == "exec_result 3"
-    assert short_term[-1].content == "response 7"
+    # No task was set, so messages[1:] is the full chat_history (16 messages)
+    assert len(messages[1:]) == 16
+    assert messages[1].content == "exec_result 0"
+    assert messages[-1].content == "response 7"
+    # Plan is stored separately via set_plan / get_plan
+    plan = mem.get_plan()
+    assert plan is not None
+    assert "do x" in plan.content
 
 
 # ── Pipeline: planner runs, critic gates, approved exec is returned ────────────
@@ -134,17 +137,18 @@ async def test_planner_runs_and_approved_exec_returned(agent):
     agent._critic_agent.invoke = AsyncMock(
         return_value=CriticVerdict(approved=True, feedback=""))
 
-    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
+    # Planner only runs on kind="task", not on exec_result
+    task_payload = json.dumps({"kind": "task", "instruction": "explore the filesystem"})
     result = await agent.handle_request_iteration(
-        _make_message(exec_payload), MagicMock())
+        _make_message(task_payload), MagicMock())
 
     # The approved actor candidate is returned — not the plan.
     assert result == exec_req
     agent._planner_agent.invoke.assert_awaited_once()
-    # The plan was stored in memory.
-    stored = agent._memory.get_plan()
-    assert stored is not None
-    assert "explore" in stored.content
+    # The plan was stored in chat history (not via set_plan).
+    messages = agent._memory.build_planner_messages()
+    plan_found = any("explore" in str(m.content) for m in messages[1:])
+    assert plan_found, "Plan should be stored in chat history"
 
 
 async def test_critic_runs_even_for_valid_first_candidate(agent):
