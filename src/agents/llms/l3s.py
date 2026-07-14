@@ -17,7 +17,7 @@ class L3SLLMClient(TerminalBenchLLMClientInterface):
 
     def __init__(self, model: str | None = None,
                  temperature: float = 0.7) -> None:
-        self._model = model or "vllm/gpt-oss:120b-mxfp4"
+        self._model = model or "vllm/qwen3.6:27b-fp8"
         self._temperature = temperature
         self._llm: ChatOpenAI | None = None
         self._rate_limited = False
