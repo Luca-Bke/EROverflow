@@ -72,7 +72,14 @@ FINALIZE — SIGNAL TASK COMPLETION
 When you are confident the task is fully done (all plan steps completed
 and verified), do NOT call execute_command. Instead, respond with plain
 text indicating completion (e.g. "Task completed successfully.").
-The system will detect the absence of a tool call and finalize.
+
+⚠️  CRITICAL: If you do NOT include a tool call in your response, the
+system will ALWAYS interpret this as "task is complete" and finalize.
+There is no retry for plain-text responses — they are final.
+
+If you are unsure whether the task is done, call execute_command to
+verify (e.g., check a file, run a test, inspect output). Only respond
+with plain text when you are certain everything is finished.
 
 ═══════════════════════════════════
 COMMAND RULES

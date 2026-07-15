@@ -93,16 +93,17 @@ class TerminalBenchAgent:
             tool_calls = getattr(actor_result, "tool_calls", None) or []
 
             if not tool_calls:
-                # No tool call → Actor wants to finalize
                 content = getattr(actor_result, "content", "")
-                # Empty response is also treated as final answer
+                # Only empty responses are treated as final answer
                 if not content or not str(content).strip():
                     print("Actor returned empty response — treating as final answer")
-                else:
-                    print(f"Actor signaled finalize: {content!r}")
-                # Store the AI message in history so the Actor doesn't repeat
+                    self._memory.add(actor_result)
+                    return None
+                # Non-empty response without tool calls (malformed or incorrect)
+                # Store in memory and let the Actor retry
+                print(f"Actor returned response without tool calls: {content!r}")
                 self._memory.add(actor_result)
-                return None
+                continue
 
             # Take only the first tool call (ignore extras)
             tool_call = tool_calls[0]
@@ -218,7 +219,7 @@ class TerminalBenchAgent:
                 await self._send_heartbeat("planner done")
 
                 plan_content = json.dumps(planner_output.updated_plan, indent=2)
-                self._memory.add(HumanMessage(
+                self._memory.add(AIMessage(
                     content=f"[Plan for solving given Task]\n{plan_content}"
                 ))
 
