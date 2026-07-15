@@ -66,6 +66,8 @@ AVAILABLE TOOL
     · timeout  — max execution time in seconds (integer, 1-300,
                   defaults to 300 if omitted)
 
+  ⚠️  NOTE: All generated commands will have a timeout of 300 seconds. Make sure the command can be run within that time limit. If the command is expected to take longer, break it into smaller steps.
+
 ═══════════════════════════════════
 FINALIZE — SIGNAL TASK COMPLETION
 ═══════════════════════════════════

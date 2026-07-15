@@ -10,6 +10,7 @@ from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.llm_clients.retry import is_retryable
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
 
@@ -57,5 +58,14 @@ class PlannerAgent(AbstractAgent):
     @traceable(name="Planner", run_type="chain")
     @utils.TimeTracer.timed("PlannerAgent.invoke_async")
     async def invoke(self, messages: list[BaseMessage]) -> PlannerOutput:
-        response = await self._llm_client.invoke_async(messages)
+        try:
+            response = await self._llm_client.invoke_async(messages)
+        except Exception as exc:
+            if not is_retryable(exc):
+                raise
+            print(
+                f"Planner LLM call failed ({type(exc).__name__}), "
+                f"retrying immediately..."
+            )
+            response = await self._llm_client.invoke_async(messages)
         return self._split_agent_response(response)

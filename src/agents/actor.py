@@ -7,6 +7,7 @@ from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.llm_clients.retry import is_retryable
 from agents.terminal_bench_supplementary.utils import TimeTracer
 
 
@@ -35,6 +36,17 @@ class ActorAgent(AbstractAgent):
         Returns an AIMessage that either carries ``tool_calls`` (for
         ``execute_command``) or plain text content (for finalize).
         """
-        return await self._llm_client.invoke_with_tools_async(
-            messages, tools
-        )
+        try:
+            return await self._llm_client.invoke_with_tools_async(
+                messages, tools
+            )
+        except Exception as exc:
+            if not is_retryable(exc):
+                raise
+            print(
+                f"Actor LLM call failed ({type(exc).__name__}), "
+                f"retrying immediately..."
+            )
+            return await self._llm_client.invoke_with_tools_async(
+                messages, tools
+            )

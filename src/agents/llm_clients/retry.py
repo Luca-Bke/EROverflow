@@ -1,15 +1,17 @@
-"""Shared exponential-backoff retry for LLM clients.
+"""Shared retryable-error classification for LLM clients.
 
 Distinguishes a *failed* attempt from "still computing" purely by outcome:
   - a returned response (HTTP 200) → done, use it
-  - 5xx / timeout / connection error → this attempt failed → retry with backoff
+  - 5xx / timeout / connection error → this attempt failed → retryable
   - other 4xx (auth, bad request) → not retryable → give up immediately
 
 An open request counts as "still computing" until the client's request timeout
 fires (configured on the ChatOpenAI instance, not here).
+
+The actual retry logic lives in the agent layer (Planner, Actor, Critic) so
+that each attempt shows up as a separate trace in LangSmith.
 """
 
-import asyncio
 from typing import Any
 
 from openai import (
@@ -42,48 +44,21 @@ async def ainvoke_with_backoff(
     tools: list[dict] | None = None,
     response_format: dict | None = None,
 ) -> Any:
-    """Invoke ``llm.ainvoke(messages)`` with exponential backoff on transient errors.
+    """Invoke ``llm.ainvoke(messages)`` once (no retry loop here).
 
-    Retries on 429 / 5xx / timeout / connection errors up to ``max_retries``
-    attempts, waiting ``base_delay * 2**attempt`` seconds between tries. Re-raises
-    on a non-retryable error or once attempts are exhausted; ``retry_log`` is
-    appended to for observability.
+    Retry logic is handled by the caller (agent layer) so each attempt
+    appears as a separate trace in LangSmith. This function performs a
+    single invocation and lets errors propagate.
 
     ``tools`` and ``response_format`` are forwarded to ``llm.ainvoke()`` as
     keyword arguments when provided (for tool-calling and structured output).
     """
-    attempts = max(1, max_retries)
     invoke_kwargs: dict[str, Any] = {}
     if tools is not None:
         invoke_kwargs["tools"] = tools
     if response_format is not None:
         invoke_kwargs["response_format"] = response_format
 
-    for attempt in range(attempts):
-        try:
-            if invoke_kwargs:
-                return await llm.ainvoke(messages, **invoke_kwargs)
-            return await llm.ainvoke(messages)
-        except Exception as exc:  # noqa: BLE001 — classified below
-            last = attempt == attempts - 1
-            if not is_retryable(exc) or last:
-                retry_log.append({
-                    "attempt": attempt + 1,
-                    "max_attempts": attempts,
-                    "exhausted": True,
-                    "retryable": is_retryable(exc),
-                    "error": str(exc)[:300],
-                })
-                raise
-            delay = base_delay * (2 ** attempt)
-            retry_log.append({
-                "attempt": attempt + 1,
-                "max_attempts": attempts,
-                "delay_seconds": delay,
-                "error": str(exc)[:300],
-            })
-            print(
-                f"LLM call failed (attempt {attempt + 1}/{attempts}: "
-                f"{type(exc).__name__}), retrying in {delay:.0f}s..."
-            )
-            await asyncio.sleep(delay)
+    if invoke_kwargs:
+        return await llm.ainvoke(messages, **invoke_kwargs)
+    return await llm.ainvoke(messages)

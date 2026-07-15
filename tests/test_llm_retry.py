@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from openai import (
@@ -58,45 +58,42 @@ def test_not_retryable_generic_error():
     assert is_retryable(ValueError("nope")) is False
 
 
-# ── ainvoke_with_backoff (asyncio.sleep patched → no real waiting) ──────────────
+# ── ainvoke_with_backoff (single invocation, no retry loop) ─────────────────
 
-async def test_succeeds_after_one_retry():
+async def test_single_invoke_success():
     ok = object()
     llm = AsyncMock()
-    llm.ainvoke = AsyncMock(side_effect=[_Status(504), ok])
+    llm.ainvoke = AsyncMock(return_value=ok)
     log: list[dict] = []
 
-    with patch("agents.llm_clients.retry.asyncio.sleep", new=AsyncMock()):
-        result = await ainvoke_with_backoff(
-            llm, [], max_retries=4, base_delay=5, retry_log=log)
+    result = await ainvoke_with_backoff(
+        llm, [], max_retries=4, base_delay=5, retry_log=log)
 
     assert result is ok
-    assert llm.ainvoke.await_count == 2
-    assert log and log[0]["delay_seconds"] == 5
+    assert llm.ainvoke.await_count == 1
+    assert log == []  # no retries logged
 
 
-async def test_exhausts_then_raises():
+async def test_single_invoke_failure_propagates():
     llm = AsyncMock()
     llm.ainvoke = AsyncMock(side_effect=_Status(504))
     log: list[dict] = []
 
-    with patch("agents.llm_clients.retry.asyncio.sleep", new=AsyncMock()):
-        with pytest.raises(APIStatusError):
-            await ainvoke_with_backoff(
-                llm, [], max_retries=3, base_delay=5, retry_log=log)
+    with pytest.raises(APIStatusError):
+        await ainvoke_with_backoff(
+            llm, [], max_retries=4, base_delay=5, retry_log=log)
 
-    assert llm.ainvoke.await_count == 3
-    assert any(e.get("exhausted") for e in log)
+    assert llm.ainvoke.await_count == 1  # only one attempt
+    assert log == []  # no retry logic in ainvoke_with_backoff anymore
 
 
-async def test_non_retryable_is_not_retried():
+async def test_non_retryable_failure_propagates():
     llm = AsyncMock()
     llm.ainvoke = AsyncMock(side_effect=_Status(400))
     log: list[dict] = []
 
-    with patch("agents.llm_clients.retry.asyncio.sleep", new=AsyncMock()):
-        with pytest.raises(APIStatusError):
-            await ainvoke_with_backoff(
-                llm, [], max_retries=4, base_delay=5, retry_log=log)
+    with pytest.raises(APIStatusError):
+        await ainvoke_with_backoff(
+            llm, [], max_retries=4, base_delay=5, retry_log=log)
 
     assert llm.ainvoke.await_count == 1

@@ -31,7 +31,7 @@ from agents.terminal_bench_supplementary.pipeline_messages import (
     ToolResponseMessage,
 )
 from agents.tools.agent_memory import AgentMemory
-from agents.tools.tool_definitions import ACTOR_TOOLS, clamp_timeout
+from agents.tools.tool_definitions import ACTOR_TOOLS
 from a2a.utils import get_message_text, new_agent_text_message
 
 
@@ -81,13 +81,13 @@ class TerminalBenchAgent:
         for _ in range(self._max_critic_actor_rounds):
             # ── 1. Actor invokes with tools ──────────────────────────────
             actor_messages = self._memory.build_actor_messages()
-            print(f"actor messages:\n{actor_messages}\n")
+            # print(f"actor messages:\n{actor_messages}\n")
 
             actor_result = await self._actor_agent.invoke(
                 actor_messages, ACTOR_TOOLS
             )
             await self._send_heartbeat("actor done")
-            print(f"actor result:\n{actor_result}\n")
+            # print(f"actor result:\n{actor_result}\n")
 
             # ── 2. Check: tool call or plain text (finalize)? ────────────
             tool_calls = getattr(actor_result, "tool_calls", None) or []
@@ -134,7 +134,7 @@ class TerminalBenchAgent:
 
             # ── 3. Critic reviews the tool call ──────────────────────────
             critic_messages = self._memory.build_critic_messages()
-            print(f"critic messages:\n{critic_messages}\n")
+            # print(f"critic messages:\n{critic_messages}\n")
 
             print(
                 f"Tool call to be judged by the critic:\n"
@@ -146,13 +146,13 @@ class TerminalBenchAgent:
                 critic_messages, tool_call
             )
             await self._send_heartbeat("critic done")
-            print(f"critic result:\n{critic_verdict}\n")
+            # print(f"critic result:\n{critic_verdict}\n")
 
             # ── 4. Handle verdict ────────────────────────────────────────
             if critic_verdict.approved:
                 # Build the exec_request JSON for the green agent
                 command = arguments.get("command", "")
-                timeout = clamp_timeout(arguments.get("timeout"))
+                timeout = 300  # always override timeout to 300
                 exec_request = json.dumps({
                     "kind": "exec_request",
                     "command": command,
@@ -211,7 +211,7 @@ class TerminalBenchAgent:
 
                 # ── Planner nur beim ersten Turn ──────────────────────
                 planner_messages = self._memory.build_planner_messages()
-                print(f"planner messages:\n{planner_messages}\n")
+                # print(f"planner messages:\n{planner_messages}\n")
 
                 planner_output = await self._planner_agent.invoke(
                     planner_messages
@@ -223,8 +223,8 @@ class TerminalBenchAgent:
                     content=f"[Plan for solving given Task]\n{plan_content}"
                 ))
 
-                print(f"planner result plan:\n{planner_output.updated_plan}\n")
-                print(f"planner result task:\n{planner_output.task_formulation}\n")
+                # print(f"planner result plan:\n{planner_output.updated_plan}\n")
+                # print(f"planner result task:\n{planner_output.task_formulation}\n")
                 # ───────────────────────────────────────────────────────
 
             elif input_dict.get("kind") == "exec_result":

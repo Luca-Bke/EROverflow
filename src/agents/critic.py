@@ -16,6 +16,7 @@ from langsmith import traceable
 
 from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
+from agents.llm_clients.retry import is_retryable
 from agents.terminal_bench_supplementary import utils
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import (
     terminal_bench_format_exception,
@@ -197,9 +198,28 @@ class CriticAgent(AbstractAgent):
                     static_syntax_validation_message,
                 )
 
-                response = await self._llm_client.invoke_with_response_format_async(
-                    critic_messages, CRITIC_VERDICT_SCHEMA
-                )
+                try:
+                    response = await self._llm_client.invoke_with_response_format_async(
+                        critic_messages, CRITIC_VERDICT_SCHEMA
+                    )
+                except Exception as exc:
+                    if not is_retryable(exc):
+                        # Non-retryable error — give up and return error verdict
+                        return CriticVerdict(
+                            approved=False,
+                            feedback=f"Format invalid (checker unavailable: {exc}). "
+                            "Try a simpler command.",
+                            is_valid_verdict=False,
+                            error=True,
+                        )
+                    # Retryable error — retry immediately (separate LangSmith trace)
+                    print(
+                        f"Critic LLM call failed ({type(exc).__name__}), "
+                        f"retrying immediately..."
+                    )
+                    response = await self._llm_client.invoke_with_response_format_async(
+                        critic_messages, CRITIC_VERDICT_SCHEMA
+                    )
             except Exception as e:
                 return CriticVerdict(
                     approved=False,
