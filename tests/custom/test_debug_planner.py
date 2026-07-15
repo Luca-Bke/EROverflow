@@ -42,6 +42,7 @@ def _mock_llm(response_text: str) -> MagicMock:
     msg = MagicMock()
     msg.content = response_text
     client.invoke_async = AsyncMock(return_value=msg)
+    client.invoke_with_response_format_async = AsyncMock(return_value=msg)
     client.rate_limited = MagicMock(return_value=False)
     client.retry_log = MagicMock(return_value=[])
     return client
