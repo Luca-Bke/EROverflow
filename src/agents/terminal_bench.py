@@ -58,7 +58,7 @@ class TerminalBenchAgent:
         self._actor_agent = ActorAgent(llm_client)
         self._turn_count = 0
 
-    @traceable(name="Actor Critic Loop", run_type="chain")
+    # @traceable(name="Actor Critic Loop", run_type="chain")
     async def __run_actor_critic_loop__(self):
         actor_messages = self._memory.build_actor_messages()
         print(f"actor messages:\n{actor_messages}\n")
@@ -95,7 +95,7 @@ class TerminalBenchAgent:
             self._memory.set_critic_feedback(critic_result.feedback)
             return None
 
-    @traceable(name="Turn", run_type="chain")
+    # @traceable(name="Turn", run_type="chain")
     @utils.TimeTracer.timed("TerminalBenchAgent.handle_request_iteration")
     async def handle_request_iteration(self, message: Message,
                                        updater: TaskUpdater) -> str:

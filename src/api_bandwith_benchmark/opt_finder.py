@@ -76,6 +76,8 @@ class Probe:
     prompt_chars: int
     success: bool
     elapsed_seconds: float
+    repeats: int
+    successes: int
     error: str | None = None
 
 
@@ -104,7 +106,10 @@ async def probe(client: AbstractLLMClient, num_log_messages: int, step: int, rep
         else:
             last_error = error
     success = successes * 2 > repeats
-    result = Probe(step, num_log_messages, prompt_chars, success, total_elapsed, None if success else last_error)
+    result = Probe(
+        step, num_log_messages, prompt_chars, success, total_elapsed,
+        repeats, successes, None if success else last_error,
+    )
     status = "ok" if success else "FAIL"
     print(
         f"  probe {step}: n={num_log_messages:3d} log messages "
@@ -187,6 +192,39 @@ def save_probes_json(
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def summarize_by_length(probes: list[Probe]) -> list[dict]:
+    """Per num_log_messages: how many individual calls were made, and the
+    success/failure split among them (a probe's majority vote can hide a
+    near-miss, e.g. 2/3 succeeding)."""
+    lengths = []
+    for p in sorted(probes, key=lambda p: p.num_log_messages):
+        lengths.append({
+            "num_log_messages": p.num_log_messages,
+            "prompt_chars": p.prompt_chars,
+            "repeats": p.repeats,
+            "successes": p.successes,
+            "failures": p.repeats - p.successes,
+            "success_rate": p.successes / p.repeats,
+            "majority_success": p.success,
+            "elapsed_seconds_total": p.elapsed_seconds,
+            "elapsed_seconds_mean": p.elapsed_seconds / p.repeats,
+            "error": p.error,
+        })
+    return lengths
+
+
+def save_length_summary_json(
+    probes: list[Probe], path: Path, provider: str, model: str,
+) -> None:
+    payload = {
+        "provider": provider,
+        "model": model,
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "lengths": summarize_by_length(probes),
+    }
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def parse_args() -> argparse.Namespace:
@@ -232,6 +270,10 @@ def main() -> None:
     json_path = args.output_dir / f"context_limit_{args.provider}_{timestamp}.json"
     save_probes_json(probes, json_path, args.provider, client.model(), max_good_n, min_bad_n)
     print(f"\nSaved probe log to {json_path}")
+
+    summary_path = args.output_dir / f"context_limit_summary_{args.provider}_{timestamp}.json"
+    save_length_summary_json(probes, summary_path, args.provider, client.model())
+    print(f"Saved per-length summary to {summary_path}")
 
     if max_good_n is None:
         print("Even the shortest long-context-style prompt failed — this looks like an "

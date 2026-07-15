@@ -54,7 +54,7 @@ class PlannerAgent(AbstractAgent):
         return PlannerOutput(updated_plan=plan, task_formulation=task)
 
     @override
-    @traceable(name="Planner", run_type="chain")
+    # @traceable(name="Planner", run_type="chain")
     @utils.TimeTracer.timed("PlannerAgent.invoke_async")
     async def invoke(self, messages: list[BaseMessage]) -> PlannerOutput:
         response = await self._llm_client.invoke_async(messages)

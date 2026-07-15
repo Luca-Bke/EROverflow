@@ -49,7 +49,7 @@ class Agent:
             max_critic_actor_rounds=10,
             short_term_window=config.SHORT_TERM_WINDOW,
         )
-        self._trace_enabled = bool(os.getenv("LANGSMITH_API_KEY"))
+        self._trace_enabled = utils.langsmith_tracing_enabled()
         if not os.getenv("LANGSMITH_PROJECT"):
             os.environ["LANGSMITH_PROJECT"] = "EROverflow-terminal-bench"
         if not os.getenv("LANGSMITH_ENDPOINT"):
@@ -58,9 +58,9 @@ class Agent:
         self._max_turn_count = config.MAX_TURN_COUNT
         self._memory_log: list[dict[str, Any]] = []
 
-    @utils.TimeTracer.timed("Agent.run")
-    @utils.TimeTracer.inverse_timed("Agent.wait_for_response")
-    @traceable(name="agent.run", run_type="chain")
+    # @utils.TimeTracer.timed("Agent.run")
+    # @utils.TimeTracer.inverse_timed("Agent.wait_for_response")
+    # @traceable(name="agent.run", run_type="chain")
     async def run(self, message: Message, updater: TaskUpdater) -> dict[str, Any]:
         """ Check max turn count implement final tracing via langchain.
         Message processing is performed elsewhere. """
@@ -83,7 +83,7 @@ class Agent:
         )
 
         # LangChain auto-traces every ChatOpenAI call to LangSmith whenever
-        # LANGSMITH_TRACING is set — independent of our own @traceable calls.
+        # LANGSMITH_TRACING is set — independent of our own # @traceable calls.
         # We only want our own session/timing traces, so suppress that here.
         # with tracing_context(enabled=False):
         response_result = await self._backend.handle_request_iteration(message, updater)

@@ -16,7 +16,7 @@ from agents.terminal_bench_supplementary import utils
 from executor import Executor
 
 
-@traceable(name="server_startup", run_type="chain")
+# @traceable(name="server_startup", run_type="chain")
 def emit_startup_trace(host: str, port: int, card_url: str | None) -> dict[str, str]:
     return {
         "event": "server_startup",
@@ -40,7 +40,7 @@ def main():
     args = parser.parse_args()
 
     # Emit one startup trace as a clear lifecycle marker in LangSmith.
-    with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
+    with tracing_context(enabled=utils.langsmith_tracing_enabled()):
         emit_startup_trace(args.host, args.port, args.card_url)
 
     # Fill in your agent card
@@ -74,10 +74,10 @@ def main():
         agent_card=agent_card,
         http_handler=request_handler,
     )
-    with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
+    with tracing_context(enabled=utils.langsmith_tracing_enabled()):
         uvicorn.run(server.build(), host=args.host, port=args.port)
 
-    with tracing_context(enabled=bool(os.getenv("LANGSMITH_API_KEY"))):
+    with tracing_context(enabled=utils.langsmith_tracing_enabled()):
         utils.emit_timer_trace(
             timer_sessions=utils.TimeTracer.timer_sessions
         )

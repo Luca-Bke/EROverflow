@@ -1,5 +1,6 @@
 import inspect
 import json
+import os
 import time
 from functools import wraps
 
@@ -10,6 +11,15 @@ from agents.configuration import config
 
 
 # ── Response classification ───────────────────────────────────────────────────
+
+def langsmith_tracing_enabled() -> bool:
+    """Parse LANGSMITH_TRACING as a real boolean.
+
+    `bool(os.getenv("LANGSMITH_TRACING"))` is always True for any non-empty
+    string (including "false"), which silently force-enables tracing no
+    matter what the env var says. Compare the string instead.
+    """
+    return os.getenv("LANGSMITH_TRACING", "").strip().lower() == "true"
 
 def is_final_response(response_result: str) -> bool:
     """Return True if the response JSON carries kind=final."""
@@ -23,7 +33,7 @@ def is_final_response(response_result: str) -> bool:
 
 # ── LangSmith session tracing ─────────────────────────────────────────────────
 
-@traceable(name="agent_session_trace", run_type="chain")
+# @traceable(name="agent_session_trace", run_type="chain")
 def emit_session_trace(
     history: list[dict],
     turn_count: int,
@@ -42,7 +52,7 @@ def emit_session_trace(
     }
 
 
-@traceable(name="timer_trace", run_type="chain")
+# @traceable(name="timer_trace", run_type="chain")
 def emit_timer_trace(timer_sessions: list[list[dict]]) -> dict:
     """Emit a single LangSmith trace summarising one completed agent session."""
     return {

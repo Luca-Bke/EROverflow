@@ -1,0 +1,276 @@
+{
+  "provider": "academiccloud",
+  "model": "qwen3.6-35b-a3b",
+  "generated_at": "2026-07-14T11:01:12",
+  "summary": {
+    "single_prompt": {
+      "count": 10,
+      "errors": 0,
+      "mean": 7.349878919997718,
+      "median": 6.380485249974299,
+      "min": 2.0337688999716192,
+      "max": 13.48331189993769,
+      "p95": 13.48331189993769
+    },
+    "multi_prompt": {
+      "count": 10,
+      "errors": 0,
+      "mean": 12.463593760016375,
+      "median": 7.321647600037977,
+      "min": 3.3530539999483153,
+      "max": 44.92978990008123,
+      "p95": 44.92978990008123
+    },
+    "long_context_prompt": {
+      "count": 10,
+      "errors": 0,
+      "mean": 23.56899733999744,
+      "median": 14.937775149999652,
+      "min": 4.262031299993396,
+      "max": 63.70388120005373,
+      "p95": 63.70388120005373
+    }
+  },
+  "trials": [
+    {
+      "category": "single_prompt",
+      "index": 0,
+      "prompt_chars": 56,
+      "elapsed_seconds": 4.29693439998664,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 1,
+      "prompt_chars": 56,
+      "elapsed_seconds": 11.916845400002785,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 2,
+      "prompt_chars": 56,
+      "elapsed_seconds": 3.3089368999935687,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 3,
+      "prompt_chars": 56,
+      "elapsed_seconds": 13.453638200066052,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 4,
+      "prompt_chars": 56,
+      "elapsed_seconds": 2.0337688999716192,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 5,
+      "prompt_chars": 56,
+      "elapsed_seconds": 8.464036099961959,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 6,
+      "prompt_chars": 56,
+      "elapsed_seconds": 12.15771100006532,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 7,
+      "prompt_chars": 56,
+      "elapsed_seconds": 2.302455800003372,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 8,
+      "prompt_chars": 56,
+      "elapsed_seconds": 2.0811505999881774,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "single_prompt",
+      "index": 9,
+      "prompt_chars": 56,
+      "elapsed_seconds": 13.48331189993769,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 0,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 8.614279399975203,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 1,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 8.007699400070123,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 2,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 3.54203819995746,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 3,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 6.635595800005831,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 4,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 32.377082200022414,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 5,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 44.92978990008123,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 6,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 8.210581300081685,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 7,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 5.386567100067623,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 8,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 3.3530539999483153,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "multi_prompt",
+      "index": 9,
+      "prompt_chars": 2342,
+      "elapsed_seconds": 3.5792502999538556,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 0,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 11.235956399934366,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 1,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 4.262031299993396,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 2,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 11.56152300001122,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 3,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 63.70388120005373,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 4,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 13.290678499964997,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 5,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 16.584871800034307,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 6,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 35.4667864999501,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 7,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 8.874233499984257,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 8,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 49.922471300000325,
+      "success": true,
+      "error": null
+    },
+    {
+      "category": "long_context_prompt",
+      "index": 9,
+      "prompt_chars": 39306,
+      "elapsed_seconds": 20.787539900047705,
+      "success": true,
+      "error": null
+    }
+  ]
+}

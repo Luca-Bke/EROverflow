@@ -100,6 +100,17 @@ uv run pytest --agent-url http://localhost:9010 --capture=no ./tests/custom/test
 uv run pytest --agent-url http://localhost:9010 --capture=no ./tests/custom/test_terminal_bench_loop.py
 ```
 
+## API Benchmarking
+```bash
+   uv run src/api_bandwith_benchmark/api_bench.py --provider l3s --num-requests 10 --delay 0.5 --output-dir results/bench_run1
+
+   uv run src/api_bandwith_benchmark/opt_finder.py --provider l3s --max-messages 200 --repeats 10
+
+   uv run  src/api_bandwith_benchmark/compare_bench.py .\results\bench_run1_academic_cloud\bench_academiccloud_20260714_123323.json .\results\bench_run2_l3s\bench_l3s_20260714_145838.json
+```
+   
+
+
 ## Publishing
 
 The repository includes a GitHub Actions workflow that automatically builds, tests, and publishes a Docker image of your agent to GitHub Container Registry.
