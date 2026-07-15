@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 
 class AgentInnerMessage(HumanMessage):
@@ -43,13 +43,21 @@ class TaskFormulationMessage(HumanMessage):
         super().__init__(content=content, **kwargs)
 
 
-class ExecutionRequestCandidateMessage(HumanMessage):
-    """Proposed exec request from the actor, forwarded to the critic for review."""
+class ToolResponseMessage(ToolMessage):
+    """Response to a tool call — either execution result or critic feedback.
 
-    type: Literal["execution_request_candidate"] = "execution_request_candidate"
+    Carries a ``tool_call_id`` linking it back to the originating tool call.
+    """
 
-    def __init__(self, content: str | list[str | dict], **kwargs: Any) -> None:
-        super().__init__(content=content, **kwargs)
+    type: Literal["tool"] = "tool"
+
+    def __init__(
+        self,
+        content: str | list[str | dict],
+        tool_call_id: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(content=content, tool_call_id=tool_call_id, **kwargs)
 
 
 class HumanTaskMessage(HumanMessage):

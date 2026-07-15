@@ -75,3 +75,45 @@ class OpenRouterLLMClient(AbstractLLMClient):
         except RateLimitError:
             self._rate_limited = True
             raise
+
+    async def invoke_with_tools_async(
+        self,
+        messages: list[Any],
+        tools: list[dict],
+    ) -> Any:
+        """Invoke the LLM with tool definitions for function calling."""
+        llm = self._create_llm()
+        max_retries = self._backoff_max_retries if self._backoff_enabled else 1
+        try:
+            return await ainvoke_with_backoff(
+                llm,
+                messages,
+                max_retries=max_retries,
+                base_delay=self._backoff_base_delay,
+                retry_log=self._retry_log,
+                tools=tools,
+            )
+        except RateLimitError:
+            self._rate_limited = True
+            raise
+
+    async def invoke_with_response_format_async(
+        self,
+        messages: list[Any],
+        response_format: dict,
+    ) -> Any:
+        """Invoke the LLM with a structured response format (JSON schema)."""
+        llm = self._create_llm()
+        max_retries = self._backoff_max_retries if self._backoff_enabled else 1
+        try:
+            return await ainvoke_with_backoff(
+                llm,
+                messages,
+                max_retries=max_retries,
+                base_delay=self._backoff_base_delay,
+                retry_log=self._retry_log,
+                response_format=response_format,
+            )
+        except RateLimitError:
+            self._rate_limited = True
+            raise

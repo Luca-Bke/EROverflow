@@ -1,11 +1,10 @@
 from collections import deque
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from agents.terminal_bench_supplementary.pipeline_messages import (
     CriticFeedbackMessage,
-    ExecutionRequestCandidateMessage,
     HumanTaskMessage,
     TaskFormulationMessage,
 )
@@ -18,9 +17,8 @@ class AgentMemory:
     Holds the three agent system prompts and the shared state they read/write:
       - plan: planner's current execution plan (one message, overwritten on update)
       - task_formulation: planner's sub-task instruction for the actor (one message)
-      - chat_history: full conversation history (execution results, AI responses, plan)
-      - execution_request_candidate: actor's proposed shell command (one message)
-      - critic_feedback: critic's latest verdict on the candidate (one message)
+      - chat_history: full conversation history (tool calls, tool responses, plan)
+      - pending_tool_call: actor's current tool call awaiting critic verdict
 
     Call build_planner_messages(), build_actor_messages(), or
     build_critic_messages() to assemble the prompt for each respective agent.
@@ -39,8 +37,7 @@ class AgentMemory:
         self._task: HumanMessage | None = None
         self._plan: HumanMessage | None = None
         self._subtask_formulation: HumanMessage | None = None
-        self._execution_request_candidate: HumanMessage | None = None
-        self._critic_feedback: HumanMessage | None = None
+        self._pending_tool_call: dict[str, Any] | None = None
         self._chat_history: list[Any] = []
 
     # ── Task ──────────────────────────────────────────────────────────────────
@@ -88,43 +85,33 @@ class AgentMemory:
     def get_subtask_formulation(self) -> HumanMessage | None:
         return self._subtask_formulation
 
-    # ── Execution request candidate ───────────────────────────────────────────
+    # ── Pending tool call ─────────────────────────────────────────────────────
 
-    def set_execution_request_candidate(self, candidate: str | HumanMessage) -> None:
-        """Store the actor's proposed execution request."""
-        if isinstance(candidate, HumanMessage):
-            self._execution_request_candidate = candidate
-        else:
-            self._execution_request_candidate = ExecutionRequestCandidateMessage(
-                content=str(candidate))
+    def set_pending_tool_call(self, tool_call: dict[str, Any]) -> None:
+        """Store the actor's current tool call awaiting critic review."""
+        self._pending_tool_call = tool_call
 
-    def get_execution_request_candidate(self) -> HumanMessage | None:
-        return self._execution_request_candidate
-
-    # ── Critic feedback ───────────────────────────────────────────────────────
-
-    def set_critic_feedback(self, feedback: str | HumanMessage | None) -> None:
-        """Store the critic's latest feedback on the execution request candidate.
-
-        Pass None to clear stale feedback once the candidate it refers to has
-        been approved or the turn is over.
-        """
-        if feedback is None:
-            self._critic_feedback = None
-        elif isinstance(feedback, HumanMessage):
-            self._critic_feedback = feedback
-        else:
-            self._critic_feedback = CriticFeedbackMessage(
-                content=str(feedback))
-
-    def get_critic_feedback(self) -> HumanMessage | None:
-        return self._critic_feedback
+    def get_pending_tool_call(self) -> dict[str, Any] | None:
+        return self._pending_tool_call
 
     # ── Chat history ──────────────────────────────────────────────────────────
 
     def add(self, message: Any) -> None:
         """Append a message to the chat history (keeps all messages)."""
         self._chat_history.append(message)
+
+    def add_tool_call_and_response(
+        self,
+        ai_message: AIMessage,
+        tool_response: ToolMessage,
+    ) -> None:
+        """Record an approved tool call and its execution result as a pair.
+
+        Stores the AIMessage (with tool_calls) followed by the ToolMessage
+        (with the exec_result or critic feedback) in chat history.
+        """
+        self._chat_history.append(ai_message)
+        self._chat_history.append(tool_response)
 
     # ── Message builders ──────────────────────────────────────────────────────
 
@@ -137,7 +124,11 @@ class AgentMemory:
         return messages
 
     def build_actor_messages(self) -> list[Any]:
-        """actor_system_prompt + task + chat history + subtask formulation"""
+        """actor_system_prompt + task + chat history + subtask formulation
+
+        The chat history now contains tool call / tool response pairs which
+        the Actor LLM understands natively.
+        """
         messages: list[Any] = [self._actor_system_prompt]
         if self._task:
             messages.append(self._task)
@@ -147,15 +138,12 @@ class AgentMemory:
         return messages
 
     def build_critic_messages(self) -> list[Any]:
-        """critic_system_prompt + execution_request_candidate only
+        """critic_system_prompt only
 
-        The critic only needs the exec request it is judging plus its own
-        system prompt.  Syntax-validation feedback is injected by the
-        CriticAgent itself (via `_compose_critic_message`).
+        The critic receives the system prompt; command details and syntax
+        check results are injected by CriticAgent._compose_critic_messages().
         """
         messages: list[Any] = [self._critic_system_prompt]
-        if self._execution_request_candidate:
-            messages.append(self._execution_request_candidate)
         return messages
 
     def snapshot_memory(self) -> dict[str, Any]:
@@ -163,7 +151,6 @@ class AgentMemory:
             "task": self._task,
             "plan": self._plan,
             "subtask": self._subtask_formulation,
-            "req_cand": self._execution_request_candidate,
-            "critic_feed": self._critic_feedback,
-            "memory": self._chat_history
+            "pending_tool_call": self._pending_tool_call,
+            "memory": self._chat_history,
         }

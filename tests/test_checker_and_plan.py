@@ -18,6 +18,8 @@ def agent():
     """A TerminalBenchAgent whose sub-agents are stubbed per test — no LLM."""
     client = MagicMock()
     client.invoke_async = AsyncMock()
+    client.invoke_with_tools_async = AsyncMock()
+    client.invoke_with_response_format_async = AsyncMock()
     client.rate_limited = MagicMock(return_value=False)
     client.retry_log = MagicMock(return_value=[])
     return TerminalBenchAgent(
@@ -39,9 +41,23 @@ def _make_message(text: str) -> Message:
     )
 
 
-def _ai(content: str):
-    """A stand-in for an actor result message carrying `.content`."""
-    return MagicMock(content=content)
+def _ai_with_tool_call(command: str, timeout: int = 300):
+    """An AIMessage that carries a tool_calls list (Actor tool-call response)."""
+    return AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "id": "call_test123",
+                "name": "execute_command",
+                "args": {"command": command, "timeout": timeout},
+            }
+        ],
+    )
+
+
+def _ai_text(content: str):
+    """An AIMessage with plain text (Actor finalize response)."""
+    return AIMessage(content=content)
 
 
 # ── CriticAgent verdict parsing (no LLM) ───────────────────────────────────────
@@ -65,6 +81,21 @@ def test_parse_verdict_embedded_in_prose():
     assert v.feedback == "fix it"
 
 
+def test_parse_verdict_double_braces():
+    """LLMs sometimes emit {{...}} — should still parse correctly."""
+    raw = '{{"approved": false, "feedback": "empty command"}}'
+    v = CriticAgent._parse_verdict(raw)
+    assert v.approved is False
+    assert "empty command" in v.feedback
+
+
+def test_parse_verdict_triple_braces():
+    """Even triple braces should be handled."""
+    raw = '{{{"approved": true, "feedback": ""}}}'
+    v = CriticAgent._parse_verdict(raw)
+    assert v.approved is True
+
+
 def test_parse_verdict_unparseable_does_not_approve():
     v = CriticAgent._parse_verdict("totally not json")
     assert v.approved is False
@@ -73,10 +104,15 @@ def test_parse_verdict_unparseable_does_not_approve():
 async def test_critic_falls_open_on_llm_error():
     """When the underlying LLM is unavailable, invoke() returns error=True."""
     client = MagicMock()
-    client.invoke_async = AsyncMock(side_effect=RuntimeError("no api key"))
+    client.invoke_with_response_format_async = AsyncMock(
+        side_effect=RuntimeError("no api key")
+    )
     critic = CriticAgent(client)
 
-    v = await critic.invoke([SystemMessage(content="critic")], '{"kind":"final"}')
+    v = await critic.invoke(
+        [SystemMessage(content="critic")],
+        {"name": "execute_command", "arguments": {"command": "ls", "timeout": 300}},
+    )
     assert v.error is True
     assert v.approved is False
 
@@ -92,13 +128,12 @@ def test_memory_set_plan_from_list():
     assert "a" in plan.content and "c" in plan.content
 
 
-def test_memory_critic_feedback_cleared_with_none():
+def test_memory_pending_tool_call():
     sys = SystemMessage(content="sys")
     mem = AgentMemory(sys, sys, sys, short_term_window=10)
-    mem.set_critic_feedback("send only one command")
-    assert mem.get_critic_feedback() is not None
-    mem.set_critic_feedback(None)
-    assert mem.get_critic_feedback() is None
+    tc = {"name": "execute_command", "arguments": {"command": "ls", "timeout": 300}}
+    mem.set_pending_tool_call(tc)
+    assert mem.get_pending_tool_call() == tc
 
 
 def test_memory_window_keeps_last_10_short_term():
@@ -127,23 +162,30 @@ def test_memory_window_keeps_last_10_short_term():
 # ── Pipeline: planner runs, critic gates, approved exec is returned ────────────
 
 async def test_planner_runs_and_approved_exec_returned(agent):
-    exec_req = json.dumps(
-        {"kind": "exec_request", "command": "ls -la", "timeout": 300})
-
     agent._planner_agent.invoke = AsyncMock(
         return_value=PlannerOutput(
-            updated_plan=["explore", "build"], task_formulation="explore"))
-    agent._actor_agent.invoke = AsyncMock(return_value=_ai(exec_req))
+            updated_plan=["explore", "build"], task_formulation="explore"
+        )
+    )
+    agent._actor_agent.invoke = AsyncMock(
+        return_value=_ai_with_tool_call("ls -la")
+    )
     agent._critic_agent.invoke = AsyncMock(
-        return_value=CriticVerdict(approved=True, feedback=""))
+        return_value=CriticVerdict(approved=True, feedback="")
+    )
 
     # Planner only runs on kind="task", not on exec_result
-    task_payload = json.dumps({"kind": "task", "instruction": "explore the filesystem"})
+    task_payload = json.dumps(
+        {"kind": "task", "instruction": "explore the filesystem"}
+    )
     result = await agent.handle_request_iteration(
-        _make_message(task_payload), MagicMock())
+        _make_message(task_payload), MagicMock()
+    )
 
-    # The approved actor candidate is returned — not the plan.
-    assert result == exec_req
+    # The approved actor candidate is returned as exec_request JSON.
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == "ls -la"
     agent._planner_agent.invoke.assert_awaited_once()
     # The plan was stored in chat history (not via set_plan).
     messages = agent._memory.build_planner_messages()
@@ -152,51 +194,125 @@ async def test_planner_runs_and_approved_exec_returned(agent):
 
 
 async def test_critic_runs_even_for_valid_first_candidate(agent):
-    good = json.dumps(
-        {"kind": "exec_request", "command": "echo hi", "timeout": 300})
-
     agent._planner_agent.invoke = AsyncMock(
-        return_value=PlannerOutput(updated_plan=[], task_formulation="do it"))
-    agent._actor_agent.invoke = AsyncMock(return_value=_ai(good))
+        return_value=PlannerOutput(updated_plan=[], task_formulation="do it")
+    )
+    agent._actor_agent.invoke = AsyncMock(
+        return_value=_ai_with_tool_call("echo hi")
+    )
     critic_mock = AsyncMock(
-        return_value=CriticVerdict(approved=True, feedback=""))
+        return_value=CriticVerdict(approved=True, feedback="")
+    )
     agent._critic_agent.invoke = critic_mock
 
-    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
+    exec_payload = json.dumps(
+        {"kind": "exec_result", "stdout": "", "exit_code": 0}
+    )
     result = await agent.handle_request_iteration(
-        _make_message(exec_payload), MagicMock())
+        _make_message(exec_payload), MagicMock()
+    )
 
-    assert result == good
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == "echo hi"
     # The critic is always the send-gate — it runs even for a valid candidate.
     critic_mock.assert_awaited_once()
 
 
 async def test_critic_rejection_blocks_then_approval_sends(agent):
-    good = json.dumps(
-        {"kind": "exec_request", "command": "echo a", "timeout": 300})
-
     agent._planner_agent.invoke = AsyncMock(
-        return_value=PlannerOutput(updated_plan=[], task_formulation="do it"))
-    agent._actor_agent.invoke = AsyncMock(return_value=_ai(good))
+        return_value=PlannerOutput(updated_plan=[], task_formulation="do it")
+    )
+    agent._actor_agent.invoke = AsyncMock(
+        return_value=_ai_with_tool_call("echo a")
+    )
     agent._critic_agent.invoke = AsyncMock(side_effect=[
         CriticVerdict(approved=False, feedback="diagnose"),
         CriticVerdict(approved=False, feedback="still wrong"),
         CriticVerdict(approved=True, feedback=""),
     ])
 
-    exec_payload = json.dumps({"kind": "exec_result", "stdout": "", "exit_code": 0})
+    exec_payload = json.dumps(
+        {"kind": "exec_result", "stdout": "", "exit_code": 0}
+    )
     result = await agent.handle_request_iteration(
-        _make_message(exec_payload), MagicMock())
+        _make_message(exec_payload), MagicMock()
+    )
 
-    assert result == good
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == "echo a"
     assert agent._critic_agent.invoke.await_count == 3
     assert agent._actor_agent.invoke.await_count == 3
-    # The rejection feedback referred to a superseded candidate — once one is
-    # approved it must not leak into the next turn's actor prompt.
-    assert agent._memory.get_critic_feedback() is None
+
+
+async def test_actor_finalize_returns_final(agent):
+    """When the Actor returns plain text (no tool_calls), the loop finalizes."""
+    agent._planner_agent.invoke = AsyncMock(
+        return_value=PlannerOutput(updated_plan=[], task_formulation="do it")
+    )
+    agent._actor_agent.invoke = AsyncMock(
+        return_value=_ai_text("Task completed successfully.")
+    )
+
+    exec_payload = json.dumps(
+        {"kind": "exec_result", "stdout": "done", "exit_code": 0}
+    )
+    result = await agent.handle_request_iteration(
+        _make_message(exec_payload), MagicMock()
+    )
+
+    assert json.loads(result)["kind"] == "final"
 
 
 # ── exec_result output truncation (no LLM) ─────────────────────────────────────
+
+def test_truncate_field_keeps_head_and_tail():
+    big = "A" * 1000 + "B" * 20000 + "Z" * 1000
+    out = utils.truncate_field(big, budget=6000)
+    assert len(out) < len(big)
+    assert out.startswith("A")
+    assert out.endswith("Z")
+    assert "truncated" in out
+
+
+def test_truncate_exec_result_bounds_stdout():
+    payload = json.dumps(
+        {"kind": "exec_result", "stdout": "x" * 50000, "exit_code": 0}
+    )
+    out = utils.truncate_exec_result(payload)
+    data = json.loads(out)
+    assert len(data["stdout"]) <= MAX_OUTPUT_CHARS + 100  # + elision marker
+    assert data["exit_code"] == 0
+
+
+def test_truncate_exec_result_passes_small_output():
+    payload = json.dumps(
+        {"kind": "exec_result", "stdout": "all good", "exit_code": 0}
+    )
+    out = utils.truncate_exec_result(payload)
+    assert json.loads(out)["stdout"] == "all good"
+
+
+# ── Turn budget: Agent.run sends a single final when out of turns ─────────────
+
+async def test_agent_sends_final_when_out_of_turns():
+    from agent import Agent
+
+    a = Agent()
+    a._turn_count = a._max_turn_count  # exhausted
+
+    updater = MagicMock()
+    updater.complete = AsyncMock()
+    updater.new_agent_message = MagicMock(return_value="final-msg")
+
+    task_payload = json.dumps({"kind": "task", "instruction": "x"})
+    await a.run(_make_message(task_payload), updater)
+
+    updater.complete.assert_awaited_once()
+    # The completed message was built from a final payload.
+    sent_text = updater.new_agent_message.call_args.kwargs["parts"][0].root.text
+    assert json.loads(sent_text)["kind"] == "final"
 
 def test_truncate_field_keeps_head_and_tail():
     big = "A" * 1000 + "B" * 20000 + "Z" * 1000

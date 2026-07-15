@@ -39,6 +39,8 @@ async def ainvoke_with_backoff(
     max_retries: int,
     base_delay: float,
     retry_log: list[dict],
+    tools: list[dict] | None = None,
+    response_format: dict | None = None,
 ) -> Any:
     """Invoke ``llm.ainvoke(messages)`` with exponential backoff on transient errors.
 
@@ -46,10 +48,21 @@ async def ainvoke_with_backoff(
     attempts, waiting ``base_delay * 2**attempt`` seconds between tries. Re-raises
     on a non-retryable error or once attempts are exhausted; ``retry_log`` is
     appended to for observability.
+
+    ``tools`` and ``response_format`` are forwarded to ``llm.ainvoke()`` as
+    keyword arguments when provided (for tool-calling and structured output).
     """
     attempts = max(1, max_retries)
+    invoke_kwargs: dict[str, Any] = {}
+    if tools is not None:
+        invoke_kwargs["tools"] = tools
+    if response_format is not None:
+        invoke_kwargs["response_format"] = response_format
+
     for attempt in range(attempts):
         try:
+            if invoke_kwargs:
+                return await llm.ainvoke(messages, **invoke_kwargs)
             return await llm.ainvoke(messages)
         except Exception as exc:  # noqa: BLE001 — classified below
             last = attempt == attempts - 1

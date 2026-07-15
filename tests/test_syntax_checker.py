@@ -8,7 +8,7 @@ from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.response_format_checker import ResponseFormatChecker
-from agents.critic import CriticAgent, CriticVerdict
+from agents.critic import CriticVerdict
 from agents.planner import PlannerOutput
 from a2a.types import Message, Part, TextPart
 
@@ -18,6 +18,8 @@ def agent():
     """A TerminalBenchAgent whose sub-agents are stubbed per test — no LLM."""
     client = MagicMock()
     client.invoke_async = AsyncMock()
+    client.invoke_with_tools_async = AsyncMock()
+    client.invoke_with_response_format_async = AsyncMock()
     client.rate_limited = MagicMock(return_value=False)
     client.retry_log = MagicMock(return_value=[])
     return TerminalBenchAgent(
@@ -39,9 +41,19 @@ def _make_message(text: str) -> Message:
     )
 
 
-def _ai(content: str):
-    """A stand-in for an actor result message carrying `.content`."""
-    return MagicMock(content=content)
+def _ai_with_tool_call(command: str, timeout: int = 300):
+    """An AIMessage carrying a tool_calls list."""
+    from langchain_core.messages import AIMessage
+    return AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "id": "call_test",
+                "name": "execute_command",
+                "args": {"command": command, "timeout": timeout},
+            }
+        ],
+    )
 
 
 # --- ExecRequestChecker.check_command_syntax (no LLM) --------------------------
@@ -100,65 +112,59 @@ def test_fork_bomb_raises():
         ExecRequestChecker.check_command_syntax(":(){ :|:& };:")
 
 
-# --- CriticAgent._validate_response (static, no LLM) --------------------------
+# --- ExecRequestChecker validation (static, no LLM) --------------------------
+# The Critic no longer parses JSON — tool schema guarantees structure.
+# These tests verify ExecRequestChecker directly (used by Critic internally).
 
 def test_empty_command_in_exec_request_raises():
-    payload = json.dumps(
-        {"kind": "exec_request", "command": "", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        CriticAgent._validate_response(payload)
+        ExecRequestChecker.check_command_syntax("")
 
 
 def test_missing_command_field_raises():
-    payload = json.dumps({"kind": "exec_request", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception, match="empty command"):
-        CriticAgent._validate_response(payload)
+        ExecRequestChecker.check_exec_request({"timeout": 30})
 
 
 def test_valid_exec_request_passes():
-    payload = json.dumps(
-        {"kind": "exec_request", "command": "echo hello", "timeout": 30})
-    result = CriticAgent._validate_response(payload)
-    assert result["kind"] == "exec_request"
+    req = {"command": "echo hello", "timeout": 30}
+    ExecRequestChecker.check_exec_request(req)  # should not raise
 
 
 def test_invalid_command_in_exec_request_raises(monkeypatch):
     monkeypatch.setattr(ExecRequestChecker, '_bash_available', True)
-    payload = json.dumps(
-        {"kind": "exec_request", "command": "if then done", "timeout": 30})
     with pytest.raises(terminal_bench_format_exception):
-        CriticAgent._validate_response(payload)
+        ExecRequestChecker.check_command_syntax("if then done")
 
 
 def test_final_passes():
-    payload = json.dumps({"kind": "final"})
-    result = CriticAgent._validate_response(payload)
-    assert result["kind"] == "final"
+    """finalize no longer goes through Critic — it's a plain text Actor
+    response (no tool call). Kept as no-op to document behaviour."""
+    pass
 
 
 def test_invalid_json_raises():
-    with pytest.raises(terminal_bench_format_exception, match="not valid JSON"):
-        CriticAgent._validate_response("not json")
+    """JSON parsing is no longer done by the Critic — tool schema guarantees
+    valid arguments. Kept as no-op."""
+    pass
 
 
 def test_unknown_kind_raises():
-    payload = json.dumps({"kind": "unknown_thing"})
-    with pytest.raises(terminal_bench_format_exception, match="unknown kind"):
-        CriticAgent._validate_response(payload)
+    """kind field is no longer checked — tool calls have a fixed name.
+    Kept as no-op."""
+    pass
 
 
 def test_invalid_timeout_raises():
-    payload = json.dumps(
-        {"kind": "exec_request", "command": "echo hi", "timeout": -1})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        CriticAgent._validate_response(payload)
+        ExecRequestChecker.check_exec_request(
+            {"command": "echo hi", "timeout": -1})
 
 
 def test_zero_timeout_raises():
-    payload = json.dumps(
-        {"kind": "exec_request", "command": "echo hi", "timeout": 0})
     with pytest.raises(terminal_bench_format_exception, match="invalid timeout"):
-        CriticAgent._validate_response(payload)
+        ExecRequestChecker.check_exec_request(
+            {"command": "echo hi", "timeout": 0})
 
 
 # --- ResponseFormatChecker deterministic normalisation (no LLM) ---------------
@@ -196,13 +202,14 @@ def test_garbage_raises_not_valid_json():
 # --- critic-loop retry semantics in handle_request_iteration ------------------
 
 async def test_retry_succeeds_on_second_attempt(agent):
-    bad = "not valid json"
-    good = json.dumps(
-        {"kind": "exec_request", "command": "echo hello", "timeout": 30})
+    good_cmd = "echo hello"
 
     agent._planner_agent.invoke = AsyncMock(
         return_value=PlannerOutput(updated_plan=["step"], task_formulation="do x"))
-    agent._actor_agent.invoke = AsyncMock(side_effect=[_ai(bad), _ai(good)])
+    agent._actor_agent.invoke = AsyncMock(side_effect=[
+        _ai_with_tool_call(good_cmd),
+        _ai_with_tool_call(good_cmd),
+    ])
     agent._critic_agent.invoke = AsyncMock(side_effect=[
         CriticVerdict(approved=False, feedback="send valid JSON"),
         CriticVerdict(approved=True, feedback=""),
@@ -212,16 +219,17 @@ async def test_retry_succeeds_on_second_attempt(agent):
     result = await agent.handle_request_iteration(
         _make_message(exec_payload), MagicMock())
 
-    assert result == good
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == good_cmd
     assert agent._actor_agent.invoke.await_count == 2
 
 
 async def test_retry_fails_after_max_attempts(agent):
-    bad = "not valid json"
-
     agent._planner_agent.invoke = AsyncMock(
         return_value=PlannerOutput(updated_plan=["step"], task_formulation="do x"))
-    agent._actor_agent.invoke = AsyncMock(return_value=_ai(bad))
+    agent._actor_agent.invoke = AsyncMock(
+        return_value=_ai_with_tool_call("bad cmd"))
     agent._critic_agent.invoke = AsyncMock(
         return_value=CriticVerdict(approved=False, feedback="still wrong"))
 
@@ -230,6 +238,5 @@ async def test_retry_fails_after_max_attempts(agent):
         _make_message(exec_payload), MagicMock())
 
     # Critic never approves → loop exhausts and a valid final is returned
-    # (never None, so the caller can't crash on a None payload).
     assert json.loads(result)["kind"] == "final"
     assert agent._actor_agent.invoke.await_count == agent._max_critic_actor_rounds

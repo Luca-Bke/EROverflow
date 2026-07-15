@@ -15,3 +15,15 @@ class AbstractLLMClient(Protocol):
     def retry_log(self) -> list[dict]: ...
 
     async def invoke_async(self, messages: list[Any]) -> Any: ...
+
+    async def invoke_with_tools_async(
+        self,
+        messages: list[Any],
+        tools: list[dict],
+    ) -> Any: ...
+
+    async def invoke_with_response_format_async(
+        self,
+        messages: list[Any],
+        response_format: dict,
+    ) -> Any: ...

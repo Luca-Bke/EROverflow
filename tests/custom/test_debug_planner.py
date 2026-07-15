@@ -150,20 +150,18 @@ async def test_planner_result_feeds_actor_messages():
 
 @pytest.mark.asyncio
 async def test_critic_approves_valid_exec_request():
-    exec_request = json.dumps({
-        "kind": "exec_request",
-        "command": "ls -la /",
-        "timeout": 30,
-    })
     critic_response = json.dumps({"approved": True, "feedback": ""})
 
     memory = _make_memory()
-    memory.set_execution_request_candidate(exec_request)
+    tool_call = {
+        "name": "execute_command",
+        "args": {"command": "ls -la /", "timeout": 30},
+    }
 
     critic = CriticAgent(_mock_llm(critic_response))
     verdict = await critic.invoke(
         memory.build_critic_messages(),
-        memory.get_execution_request_candidate().content,
+        tool_call,
     )
     assert verdict.approved is True
 
