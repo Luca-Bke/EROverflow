@@ -226,7 +226,7 @@ RECON_CMD = (
 
 # ── LLM provider selection ───────────────────────────────────────────────────
 
-LLM_PROVIDER = "l3s"
+LLM_PROVIDER = "openrouter"
 
 LLM_PROVIDER_DICTIONARY: dict[str, type[AbstractLLMClient]] = {
     "openrouter": OpenRouterLLMClient,
