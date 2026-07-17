@@ -94,23 +94,30 @@ class TerminalBenchAgent:
 
             if not tool_calls:
                 content = getattr(actor_result, "content", "")
-                # Only empty responses are treated as final answer
-                if not content or not str(content).strip():
-                    print("Actor returned empty response — treating as final answer")
-                    self._memory.add(actor_result)
-                    return None
-                # Non-empty response without tool calls (malformed or incorrect)
-                # Store in memory and let the Actor retry
-                print(f"Actor returned response without tool calls: {content!r}")
+                print(f"Actor returned response without tool calls — treating as final answer: {content!r}")
                 self._memory.add(actor_result)
-                continue
+                return None
 
             # Take only the first tool call (ignore extras)
             tool_call = tool_calls[0]
+            tool_name = tool_call.get("name", "")
             tool_call_id = tool_call.get("id", str(uuid.uuid4()))
             # LangChain uses 'args'; raw OpenAI uses 'arguments' — handle both
             arguments: dict = tool_call.get("args") or tool_call.get("arguments", {})
 
+            # ── 2b. submit_final → task complete ─────────────────────────
+            if tool_name == "submit_final":
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        arguments = {}
+                output = arguments.get("output", "")
+                print(f"Actor submitted final result: {output!r}")
+                self._memory.add(actor_result)
+                return None
+
+            # ── 2c. execute_command (or any other tool) → critic review ──
             # Ensure arguments is a dict (some LLMs return JSON strings)
             if isinstance(arguments, str):
                 try:

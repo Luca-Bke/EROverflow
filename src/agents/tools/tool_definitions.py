@@ -48,8 +48,32 @@ EXECUTE_COMMAND_TOOL: dict = {
     },
 }
 
-# List of tools the Actor can call (currently just one).
-ACTOR_TOOLS: list[dict] = [EXECUTE_COMMAND_TOOL]
+# OpenAI-compatible tool definition for the submit_final tool.
+# The Actor calls this to signal task completion.
+SUBMIT_FINAL_TOOL: dict = {
+    "type": "function",
+    "function": {
+        "name": "submit_final",
+        "description": (
+            "Submit the final result and end the task. "
+            "Call this only when the task is complete and verified."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "output": {
+                    "type": "string",
+                    "description": "Brief summary of what was accomplished.",
+                },
+            },
+            "required": ["output"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+# List of tools the Actor can call.
+ACTOR_TOOLS: list[dict] = [EXECUTE_COMMAND_TOOL, SUBMIT_FINAL_TOOL]
 
 # ── Critic verdict JSON schema (for response_format) ─────────────────────────
 
@@ -101,6 +125,7 @@ __all__ = [
     "ACTOR_TOOLS",
     "CRITIC_VERDICT_SCHEMA",
     "EXECUTE_COMMAND_TOOL",
+    "SUBMIT_FINAL_TOOL",
     "clamp_timeout",
     "DEFAULT_TIMEOUT",
     "MAX_TIMEOUT",
