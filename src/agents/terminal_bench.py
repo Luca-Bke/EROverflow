@@ -294,15 +294,23 @@ class TerminalBenchAgent:
             if exec_request is not None:
                 return exec_request
 
-        except (RateLimitError, APITimeoutError):
-            print("Rate limit or timeout hit; returning final.")
-            return json.dumps({"kind": "final"})
+        except (RateLimitError, APITimeoutError) as e:
+            print(f"Rate limit or timeout hit ({e}) — retrying in next turn.")
+            return json.dumps({
+                "kind": "exec_request",
+                "command": "true",
+                "timeout": 1,
+            })
         except Exception as e:
             error_msg = str(e).lower()
-            # Treat "empty generation" errors as final answer (LLM considers task done)
+            # Treat "empty generation" errors as transient — retry in next turn
             if "empty" in error_msg and ("generation" in error_msg or "output" in error_msg):
-                print(f"LLM returned empty response ({e}) — treating as final answer")
-                return json.dumps({"kind": "final"})
+                print(f"LLM returned empty response ({e}) — retrying in next turn.")
+                return json.dumps({
+                    "kind": "exec_request",
+                    "command": "true",
+                    "timeout": 1,
+                })
             print(
                 "".join(
                     traceback.format_exception(type(e), e, e.__traceback__)

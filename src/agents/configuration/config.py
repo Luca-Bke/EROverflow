@@ -269,7 +269,7 @@ BACKOFF_BASE_DELAY = 5.0
 
 # ── Agent turn limits ────────────────────────────────────────────────────────
 
-MAX_TURN_COUNT = 30
+MAX_TURN_COUNT = 60
 MAX_SYNTAX_RETRIES = 5
 MAX_PLAN_TURNS = 3
 SHORT_TERM_WINDOW = 10
