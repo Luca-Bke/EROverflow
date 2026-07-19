@@ -94,9 +94,24 @@ class TerminalBenchAgent:
 
             if not tool_calls:
                 content = getattr(actor_result, "content", "")
-                print(f"Actor returned response without tool calls — treating as final answer: {content!r}")
+                print(
+                    f"Actor returned response without tool calls — "
+                    f"not treating as completion, nudging to use tools: {content!r}"
+                )
+                # Don't treat plain text as completion.
+                # Add the response and a nudge so the actor retries with a tool call.
+                nudge_msg = ToolResponseMessage(
+                    content=(
+                        "You responded without calling a tool. "
+                        "Use `execute_command` to run a shell command, "
+                        "or `submit_final` when the ENTIRE user task is complete. "
+                        "Retry with a tool call."
+                    ),
+                    tool_call_id=str(uuid.uuid4()),
+                )
                 self._memory.add(actor_result)
-                return None
+                self._memory.add(nudge_msg)
+                continue
 
             # Take only the first tool call (ignore extras)
             tool_call = tool_calls[0]
@@ -196,8 +211,18 @@ class TerminalBenchAgent:
                 )
                 # Loop continues — Actor will see the tool response and retry
 
-        # Loop exhausted
-        return None
+        # Loop exhausted — Critic did not approve any command.
+        # Return a no-op exec_request so the green agent executes it,
+        # returns exec_result, and a new turn is started naturally.
+        print(
+            f"Actor-Critic loop exhausted after {self._max_critic_actor_rounds} "
+            f"rounds without approval — sending no-op to continue in next turn."
+        )
+        return json.dumps({
+            "kind": "exec_request",
+            "command": "true",
+            "timeout": 1,
+        })
 
     # ── Main Turn Handler ────────────────────────────────────────────────────
 
@@ -285,11 +310,8 @@ class TerminalBenchAgent:
             )
             raise
 
-        # Actor finalized or loop exhausted
-        print(
-            f"Actor finalized or critic did not approve any candidate "
-            f"within {self._max_critic_actor_rounds} rounds; returning final."
-        )
+        # Actor called submit_final — task is complete
+        print("Actor called submit_final; returning final.")
         return json.dumps({"kind": "final"})
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:

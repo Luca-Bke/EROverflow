@@ -49,7 +49,10 @@ Before calling a tool, ask yourself:
 2. **submit_final(output)**
    - `output` — brief summary of what was accomplished (string, 
      required).
-   - Call only when the task, given at the start by the User, is complete and verified.
+   - **ONLY call this when the ENTIRE user task is complete and verified.**
+     This is NOT for individual subtasks or plan steps — only when the
+     original task given by the user at the start is fully done.
+     Once called, the task is submitted and cannot be continued.
 
 ## Efficiency
 
@@ -93,10 +96,15 @@ Before calling a tool, ask yourself:
 
 ## Finalize
 
-When confident the task is fully done (all plan steps completed and 
-verified), call `submit_final` with a brief summary. If unsure, 
-call `execute_command` to verify first (e.g., check a file, run a 
-test, inspect output).
+When confident the ENTIRE user task is fully done (all plan steps 
+completed and verified), call `submit_final` with a brief summary.
+This is the final submission — once called, the task cannot be 
+continued or modified. If unsure, call `execute_command` to verify 
+first (e.g., check a file, run a test, inspect output).
+
+**Important**: `submit_final` is for the complete user task, NOT for
+individual subtasks or intermediate results. Only call it when you
+are certain the original task given by the user is fully accomplished.
 
 """
 
