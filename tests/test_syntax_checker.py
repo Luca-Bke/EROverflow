@@ -237,6 +237,9 @@ async def test_retry_fails_after_max_attempts(agent):
     result = await agent.handle_request_iteration(
         _make_message(exec_payload), MagicMock())
 
-    # Critic never approves → loop exhausts and a valid final is returned
-    assert json.loads(result)["kind"] == "final"
+    # Critic never approves → loop exhausts and returns a no-op exec_request
+    # to continue in the next turn
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == "true"
     assert agent._actor_agent.invoke.await_count == agent._max_critic_actor_rounds

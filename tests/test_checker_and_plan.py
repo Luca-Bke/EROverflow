@@ -247,7 +247,8 @@ async def test_critic_rejection_blocks_then_approval_sends(agent):
 
 
 async def test_actor_finalize_returns_final(agent):
-    """When the Actor returns plain text (no tool_calls), the loop finalizes."""
+    """When the Actor returns plain text (no tool_calls), the loop nudges
+    the actor to retry with tools. After exhaustion it returns a no-op exec_request."""
     agent._planner_agent.invoke = AsyncMock(
         return_value=PlannerOutput(updated_plan=[], task_formulation="do it")
     )
@@ -262,7 +263,11 @@ async def test_actor_finalize_returns_final(agent):
         _make_message(exec_payload), MagicMock()
     )
 
-    assert json.loads(result)["kind"] == "final"
+    # Actor keeps returning plain text → loop exhausts → no-op exec_request
+    result_dict = json.loads(result)
+    assert result_dict["kind"] == "exec_request"
+    assert result_dict["command"] == "true"
+    assert agent._actor_agent.invoke.await_count == agent._max_critic_actor_rounds
 
 
 # ── exec_result output truncation (no LLM) ─────────────────────────────────────
