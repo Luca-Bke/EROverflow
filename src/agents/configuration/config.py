@@ -249,7 +249,8 @@ OPENROUTER_MODEL = "qwen/qwen3.6-27b"
 # ── L3S / LLMHub ─────────────────────────────────────────────────────────────
 
 # L3S_MODEL = "vllm/gpt-oss:120b-mxfp4"
-L3S_MODEL = "vllm/qwen3.6:27b-fp8"
+# L3S_MODEL = "vllm/qwen3.6:27b-fp8"
+L3S_MODEL = "vllm/apertus:4b-v1.1-it-bf16"
 L3S_ENDPOINT = "https://inference.kbs.uni-hannover.de/v1"  #"https://brrr.kbs.uni-hannover.de/v1"
 
 # Per-request timeout (seconds) — backstop against a hung request. A healthy
