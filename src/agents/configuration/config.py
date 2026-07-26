@@ -1,3 +1,5 @@
+import os
+
 from agents.llm_clients.academic_cloud import AcademicCloudLLMClient
 from agents.llm_clients.l3s import L3SLLMClient
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
@@ -274,3 +276,10 @@ MAX_TURN_COUNT = 60
 MAX_SYNTAX_RETRIES = 5
 MAX_PLAN_TURNS = 3
 SHORT_TERM_WINDOW = 10
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+# Controls verbosity of the agent's runtime decision-trace logs. INFO shows the
+# routine actor/critic trace; WARNING quiets it to anomalies and errors only;
+# DEBUG is most verbose. Override with the LOG_LEVEL env var.
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

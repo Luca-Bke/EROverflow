@@ -1,5 +1,6 @@
 """Actor agent that uses native LLM tool calls to propose shell commands."""
 
+import logging
 from typing import override
 
 from langchain_core.messages import BaseMessage
@@ -9,6 +10,9 @@ from agents.abstract_agent import AbstractAgent
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 from agents.llm_clients.retry import is_retryable
 from agents.terminal_bench_supplementary.utils import TimeTracer
+
+
+logger = logging.getLogger(__name__)
 
 
 class ActorAgent(AbstractAgent):
@@ -43,9 +47,9 @@ class ActorAgent(AbstractAgent):
         except Exception as exc:
             if not is_retryable(exc):
                 raise
-            print(
-                f"Actor LLM call failed ({type(exc).__name__}), "
-                f"retrying immediately..."
+            logger.warning(
+                "Actor LLM call failed (%s), retrying immediately...",
+                type(exc).__name__,
             )
             return await self._llm_client.invoke_with_tools_async(
                 messages, tools

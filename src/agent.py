@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from typing import Any
 
@@ -15,6 +16,9 @@ from agents.llm_clients.open_router import OpenRouterLLMClient
 from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 from agents.terminal_bench import TerminalBenchAgent
 from agents.terminal_bench_supplementary import utils
+
+
+logger = logging.getLogger(__name__)
 
 
 def _build_llm_client() -> AbstractLLMClient:
@@ -68,7 +72,7 @@ class Agent:
         # Out of turn budget: send a clean final so the executor never has to
         # respond with an empty message (which it treats as an error).
         if self._turn_count >= self._max_turn_count:
-            print("Max turn count reached; sending final.")
+            logger.info("Max turn count reached; sending final.")
             final_msg = json.dumps({"kind": "final"})
             response_msg = updater.new_agent_message(
                 parts=[Part(root=TextPart(text=final_msg))])

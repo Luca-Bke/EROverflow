@@ -1,3 +1,5 @@
+import logging
+
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -15,6 +17,9 @@ from a2a.utils import (
 from langsmith import traceable
 
 from agent import Agent
+
+
+logger = logging.getLogger(__name__)
 
 
 TERMINAL_STATES = {
@@ -58,7 +63,7 @@ class Executor(AgentExecutor):
             if not updater._terminal_state_reached:
                 await updater.complete()
         except Exception as e:
-            print(f"Task failed with agent error: {e}")
+            logger.exception("Task failed with agent error")
             await updater.failed(new_agent_text_message(f"Agent error: {e}", context_id=context_id, task_id=task.id))
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:

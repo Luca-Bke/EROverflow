@@ -1,10 +1,14 @@
 
 
 # Always interactive — no non-interactive mode exists
+import logging
 import re
 import subprocess
 
 from agents.terminal_bench_supplementary.terminal_bench_format_exception import terminal_bench_format_exception
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExecRequestChecker():
@@ -56,7 +60,7 @@ class ExecRequestChecker():
         except Exception:
             cls._bash_available = False
         if not cls._bash_available:
-            print(
+            logger.warning(
                 "bash is not usable here — skipping static shell-syntax checks "
                 "(interactive/destructive filters stay active)."
             )

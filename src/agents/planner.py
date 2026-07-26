@@ -1,5 +1,6 @@
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, override
@@ -13,6 +14,9 @@ from agents.llm_clients.abstract_llm_client import AbstractLLMClient
 from agents.llm_clients.retry import is_retryable
 from agents.terminal_bench_supplementary import utils
 from agents.tools.agent_memory import AgentMemory
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,9 +67,9 @@ class PlannerAgent(AbstractAgent):
         except Exception as exc:
             if not is_retryable(exc):
                 raise
-            print(
-                f"Planner LLM call failed ({type(exc).__name__}), "
-                f"retrying immediately..."
+            logger.warning(
+                "Planner LLM call failed (%s), retrying immediately...",
+                type(exc).__name__,
             )
             response = await self._llm_client.invoke_async(messages)
         return self._split_agent_response(response)

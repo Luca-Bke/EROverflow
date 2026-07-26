@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import uvicorn
 from langsmith import traceable, tracing_context
@@ -12,8 +13,15 @@ from a2a.types import (
     AgentSkill,
 )
 
+from agents.configuration import config
 from agents.terminal_bench_supplementary import utils
 from executor import Executor
+
+
+logging.basicConfig(
+    level=config.LOG_LEVEL,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 
 @traceable(name="server_startup", run_type="chain")

@@ -11,8 +11,7 @@
       tracing_project: { type: "string", secret: false },
       tracing_endpoint: { type: "string", secret: false}
     },
-    required: ["llmhub_apikey"],
-    required: ["academiccloud_api_key"],
+    required: ["llmhub_apikey", "academiccloud_api_key"],
     additionalProperties: false,
   },
 

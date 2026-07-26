@@ -7,6 +7,7 @@ command is approved for execution or rejected with feedback.
 """
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -24,6 +25,9 @@ from agents.terminal_bench_supplementary.terminal_bench_format_exception import 
 from agents.terminal_bench_supplementary.utils import TimeTracer
 from agents.tools.exec_request_checker import ExecRequestChecker
 from agents.tools.tool_definitions import CRITIC_VERDICT_SCHEMA
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -213,9 +217,9 @@ class CriticAgent(AbstractAgent):
                             error=True,
                         )
                     # Retryable error — retry immediately (separate LangSmith trace)
-                    print(
-                        f"Critic LLM call failed ({type(exc).__name__}), "
-                        f"retrying immediately..."
+                    logger.warning(
+                        "Critic LLM call failed (%s), retrying immediately...",
+                        type(exc).__name__,
                     )
                     response = await self._llm_client.invoke_with_response_format_async(
                         critic_messages, CRITIC_VERDICT_SCHEMA

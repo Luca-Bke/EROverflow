@@ -11,7 +11,7 @@ returned as a tool response for the Actor to retry).
 """
 
 import json
-import traceback
+import logging
 import uuid
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -33,6 +33,9 @@ from agents.terminal_bench_supplementary.pipeline_messages import (
 from agents.tools.agent_memory import AgentMemory
 from agents.tools.tool_definitions import ACTOR_TOOLS
 from a2a.utils import get_message_text, new_agent_text_message
+
+
+logger = logging.getLogger(__name__)
 
 
 class TerminalBenchAgent:
@@ -94,9 +97,10 @@ class TerminalBenchAgent:
 
             if not tool_calls:
                 content = getattr(actor_result, "content", "")
-                print(
-                    f"Actor returned response without tool calls — "
-                    f"not treating as completion, nudging to use tools: {content!r}"
+                logger.warning(
+                    "Actor returned response without tool calls — "
+                    "not treating as completion, nudging to use tools: %r",
+                    content,
                 )
                 # Don't treat plain text as completion.
                 # Add the response and a nudge so the actor retries with a tool call.
@@ -128,7 +132,7 @@ class TerminalBenchAgent:
                     except json.JSONDecodeError:
                         arguments = {}
                 output = arguments.get("output", "")
-                print(f"Actor submitted final result: {output!r}")
+                logger.info("Actor submitted final result: %r", output)
                 self._memory.add(actor_result)
                 return None
 
@@ -138,7 +142,9 @@ class TerminalBenchAgent:
                 try:
                     arguments = json.loads(arguments)
                 except json.JSONDecodeError:
-                    print(f"Invalid tool call arguments (not JSON): {arguments!r}")
+                    logger.warning(
+                        "Invalid tool call arguments (not JSON): %r", arguments
+                    )
                     # Send error as tool response and retry
                     error_tool_msg = ToolResponseMessage(
                         content=(
@@ -158,10 +164,12 @@ class TerminalBenchAgent:
             critic_messages = self._memory.build_critic_messages()
             # print(f"critic messages:\n{critic_messages}\n")
 
-            print(
-                f"Tool call to be judged by the critic:\n"
-                f"  command: {arguments.get('command')!r}\n"
-                f"  timeout: {arguments.get('timeout')}\n"
+            logger.info(
+                "Tool call to be judged by the critic:\n"
+                "  command: %r\n"
+                "  timeout: %s\n",
+                arguments.get("command"),
+                arguments.get("timeout"),
             )
 
             critic_verdict: CriticVerdict = await self._critic_agent.invoke(
@@ -192,12 +200,12 @@ class TerminalBenchAgent:
                     actor_result, approved_tool_msg
                 )
 
-                print(f"Approved exec request: {exec_request}")
+                logger.info("Approved exec request: %s", exec_request)
                 return exec_request
             else:
                 # Critic rejected — send feedback as tool response for retry
                 feedback = critic_verdict.feedback or "Command rejected."
-                print(f"Critic rejected: {feedback}")
+                logger.info("Critic rejected: %s", feedback)
 
                 reject_tool_msg = ToolResponseMessage(
                     content=(
@@ -214,9 +222,10 @@ class TerminalBenchAgent:
         # Loop exhausted — Critic did not approve any command.
         # Return a no-op exec_request so the green agent executes it,
         # returns exec_result, and a new turn is started naturally.
-        print(
-            f"Actor-Critic loop exhausted after {self._max_critic_actor_rounds} "
-            f"rounds without approval — sending no-op to continue in next turn."
+        logger.info(
+            "Actor-Critic loop exhausted after %d rounds without approval — "
+            "sending no-op to continue in next turn.",
+            self._max_critic_actor_rounds,
         )
         return json.dumps({
             "kind": "exec_request",
@@ -285,8 +294,8 @@ class TerminalBenchAgent:
                         HumanMessage(content=truncated)
                     )
             else:
-                print(
-                    f"Received unknown message type: {input_dict.get('kind')}"
+                logger.warning(
+                    "Received unknown message type: %s", input_dict.get("kind")
                 )
 
             # ── Actor-Critic Loop (in jedem Turn) ──────────────────────
@@ -295,7 +304,9 @@ class TerminalBenchAgent:
                 return exec_request
 
         except (RateLimitError, APITimeoutError) as e:
-            print(f"Rate limit or timeout hit ({e}) — retrying in next turn.")
+            logger.warning(
+                "Rate limit or timeout hit (%s) — retrying in next turn.", e
+            )
             return json.dumps({
                 "kind": "exec_request",
                 "command": "true",
@@ -305,21 +316,19 @@ class TerminalBenchAgent:
             error_msg = str(e).lower()
             # Treat "empty generation" errors as transient — retry in next turn
             if "empty" in error_msg and ("generation" in error_msg or "output" in error_msg):
-                print(f"LLM returned empty response ({e}) — retrying in next turn.")
+                logger.warning(
+                    "LLM returned empty response (%s) — retrying in next turn.", e
+                )
                 return json.dumps({
                     "kind": "exec_request",
                     "command": "true",
                     "timeout": 1,
                 })
-            print(
-                "".join(
-                    traceback.format_exception(type(e), e, e.__traceback__)
-                )
-            )
+            logger.exception("Unhandled error in handle_request_iteration")
             raise
 
         # Actor called submit_final — task is complete
-        print("Actor called submit_final; returning final.")
+        logger.info("Actor called submit_final; returning final.")
         return json.dumps({"kind": "final"})
 
     async def run(self, message: Message, updater: TaskUpdater) -> None:
@@ -333,7 +342,7 @@ class TerminalBenchAgent:
                     new_agent_text_message(f"... {status} ...")
                 )
             except Exception as e:
-                print(f"Heartbeat failed (non-fatal): {e}")
+                logger.warning("Heartbeat failed (non-fatal): %s", e)
 
 
 __all__ = ["TerminalBenchAgent"]
