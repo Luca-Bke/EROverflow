@@ -1,7 +1,7 @@
 [project]
-name = "agent-template"
+name = "eroverflow"
 version = "0.1.0"
-description = "A template for A2A agents"
+description = "A2A purple agent for Terminal Bench 2.0 (Planner-Actor-Critic pipeline)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
