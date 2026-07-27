@@ -98,9 +98,11 @@ It documents:
   (only the active provider's key is required).
 - **LangSmith tracing** — `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`,
   `LANGSMITH_ENDPOINT`, `LANGSMITH_TRACING`.
-- **Rate-limit backoff** — `ENABLE_RATE_LIMIT_BACKOFF`, `BACKOFF_MAX_RETRIES`,
-  `BACKOFF_BASE_DELAY`.
 - **Logging** — `LOG_LEVEL` (see [Logging](#logging)).
+
+Rate-limit backoff (`ENABLE_RATE_LIMIT_BACKOFF`, `BACKOFF_MAX_RETRIES`,
+`BACKOFF_BASE_DELAY`) and the provider models/endpoints are source-code
+constants in `config.py`, not environment variables.
 
 ### Tuning knobs (`config.py`)
 
