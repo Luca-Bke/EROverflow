@@ -182,6 +182,8 @@ The image entrypoint runs `uv run src/server.py --host 0.0.0.0 --port 9010`.
 
 ## Testing
 
+Test can be run locally and there is a test that runs the agent in a loop and makes it complete a custom demo exercise. However, this is not real deployment in the correct benchmark. For actually running the agent, please refer to the section "Deployment / Publishing".
+
 ```bash
 # Install test dependencies
 uv sync --extra test
@@ -205,6 +207,36 @@ Integration and debug tests live in `tests/custom/` (e.g. `test_debug_planner.py
 match whichever port your agent is actually serving.
 
 ## Deployment / Publishing
+
+The final deployment of the code must be done via the Agent Beats testing infrastructure.
+
+In the following section we provide some simplified explanations and suggest reading the official [Agent Beats documentation](https://docs.agentbeats.dev/tutorial/).
+It is necessary for the deployment to make oneself familiar with the Agent Beats processes. Sadly, there is no faster way.
+
+There are two ways of running the model on the Agent Beats Terminal Bench 2.0 challenge.
+
+1. Via the [Agent Beats Challenges](https://agentbeats.dev/agentbeater/terminal-bench-2-0) "Quick Submit" option. 
+   - requires ownership of the repo => a fork of out agent repo must be created
+   - requires registering this fork as a Purple Agent on Agent Beats
+   - more straightforward way
+   - simpler way of making an official commit
+
+
+2. By forking the [Terminal Bench 2.0 Green Agent Leaderboard](https://github.com/RDI-Foundation/terminal-bench-leaderboard) repo.
+   - more tecnical
+   - easier to automate
+   - we mainly used THIS option during development
+
+
+
+  >We recommend using the first option, if you just want to run the Agent quickly. As far as we know, this should not require any changes to the amber-manifest by you. You just need to provide the relevant secrets (see .env.example) in Agent Beats.
+
+
+>Changing the config (this includes the LLM provider or the used model for example) requires you to make a change to the config.py file.
+
+
+### Technical details of running the agent
+On a more technical level, which is not required for running the agent via the quick submit:
 
 The agent is deployed via the Amber manifest (`amber-manifest.json5`), which
 points at the image `ghcr.io/luca-bke/eroverflow` and serves the A2A endpoint on
